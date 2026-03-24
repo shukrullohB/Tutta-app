@@ -20,4 +20,9 @@ class RuntimeFlags {
     'USE_FAKE_REVIEWS',
     defaultValue: true,
   );
+
+  static const bool useFakeChat = bool.fromEnvironment(
+    'USE_FAKE_CHAT',
+    defaultValue: true,
+  );
 }

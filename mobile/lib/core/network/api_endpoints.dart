@@ -59,4 +59,10 @@ class ApiEndpoints {
   static const reviews = '/reviews';
 
   static String reviewsByListing(String listingId) => '$reviews?listing_id=$listingId';
+
+  // Chat contract
+  static const chatThreads = '/chat/threads';
+
+  static String chatThreadMessages(String threadId) =>
+      '$chatThreads/$threadId/messages';
 }
