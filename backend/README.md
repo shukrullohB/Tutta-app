@@ -72,6 +72,16 @@ Agar `password authentication failed` chiqsa, `.env`dagi `POSTGRES_USER/POSTGRES
 python manage.py test apps.users apps.listings apps.bookings apps.reviews apps.chat apps.payments
 ```
 
+## 2.3 CI check (local)
+
+```bash
+set USE_SQLITE=True
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test apps.users apps.listings apps.bookings apps.reviews apps.chat apps.payments
+python manage.py spectacular --file openapi-schema.yml
+```
+
 ## 2.2 API xato formati
 
 API xatolari bir xil formatda qaytadi:
@@ -113,3 +123,13 @@ Keyin PR: `feature/auth-api` -> `feature/backend`.
 
 - Local frontend/mobile integratsiya uchun `.env`da `CORS_ALLOWED_ORIGINS` va `CSRF_TRUSTED_ORIGINS` ni moslang.
 - Productionda `DEBUG=False` va `SECURE_SSL_REDIRECT=True` bo'lishi kerak.
+
+## 5) Docker bilan ishga tushirish
+
+Repo root'da:
+
+```bash
+docker compose -f docker-compose.backend.yml up --build
+```
+
+Backend: `http://127.0.0.1:8000`
