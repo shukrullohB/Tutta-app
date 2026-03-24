@@ -72,7 +72,7 @@ class ReviewApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('booking', response.data)
+        self.assertIn('booking', response.data.get('errors', {}))
 
     def test_review_fails_if_review_already_exists(self):
         booking = self._create_booking()
@@ -86,5 +86,4 @@ class ReviewApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('booking', response.data)
-
+        self.assertIn('booking', response.data.get('errors', {}))

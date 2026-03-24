@@ -24,6 +24,8 @@ copy .env.example .env
 - `POSTGRES_PASSWORD`
 - `POSTGRES_HOST`
 - `POSTGRES_PORT`
+- `CORS_ALLOWED_ORIGINS`
+- `CSRF_TRUSTED_ORIGINS`
 
 ### 1.4 Migratsiya va server
 ```bash
@@ -70,6 +72,20 @@ Agar `password authentication failed` chiqsa, `.env`dagi `POSTGRES_USER/POSTGRES
 python manage.py test apps.users apps.listings apps.bookings apps.reviews apps.chat apps.payments
 ```
 
+## 2.2 API xato formati
+
+API xatolari bir xil formatda qaytadi:
+
+```json
+{
+  "success": false,
+  "message": "Validation error.",
+  "errors": {
+    "field_name": ["..."]
+  }
+}
+```
+
 ## 3) Git workflow (clean)
 
 Asosiy branch: `feature/backend`
@@ -93,11 +109,7 @@ git push -u origin feature/auth-api
 ```
 Keyin PR: `feature/auth-api` -> `feature/backend`.
 
-## 4) Ertangi aniq plan
+## 4) Eslatma
 
-1. DB ulanishini 100% yashil holatga keltirish (`migrate` o'tishi kerak).
-2. `feature/auth-api` branchda auth'ni kuchaytirish:
-- refresh endpoint
-- logout (token blacklisting)
-- basic throttling
-3. Auth testlar yozish.
+- Local frontend/mobile integratsiya uchun `.env`da `CORS_ALLOWED_ORIGINS` va `CSRF_TRUSTED_ORIGINS` ni moslang.
+- Productionda `DEBUG=False` va `SECURE_SSL_REDIRECT=True` bo'lishi kerak.
