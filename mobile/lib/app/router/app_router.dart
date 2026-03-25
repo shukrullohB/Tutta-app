@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/presentation/screens/auth_screen.dart';
 import '../../features/auth/presentation/screens/onboarding_screen.dart';
+import '../../features/auth/presentation/screens/verify_otp_screen.dart';
 import '../../features/bookings/presentation/screens/booking_payment_screen.dart';
 import '../../features/bookings/presentation/screens/booking_request_screen.dart';
 import '../../features/bookings/presentation/screens/host_requests_screen.dart';
@@ -14,6 +15,7 @@ import '../../features/home/application/app_session_controller.dart';
 import '../../features/home/presentation/screens/home_shell_screen.dart';
 import '../../features/listings/presentation/screens/listing_details_screen.dart';
 import '../../features/listings/presentation/screens/search_screen.dart';
+import '../../features/listings/presentation/screens/create_listing_screen.dart';
 import '../../features/premium/presentation/screens/premium_paywall_screen.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
 import '../../features/profile/presentation/screens/support_screen.dart';
@@ -23,44 +25,50 @@ import '../../features/wishlist/presentation/screens/favorites_screen.dart';
 import 'route_names.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authControllerProvider);
+  final isLoggedIn = ref.watch(
+    authControllerProvider.select(
+      (state) => state.valueOrNull?.isAuthenticated ?? false,
+    ),
+  );
   final session = ref.watch(appSessionControllerProvider);
 
   return GoRouter(
-    initialLocation: RouteNames.auth,
+    initialLocation: RouteNames.splash,
     redirect: (context, state) {
       final location = state.matchedLocation;
-      final isLoggedIn = authState.valueOrNull?.isAuthenticated ?? false;
       final onboardingCompleted = session.onboardingCompleted;
       final roleSelected = session.activeRole != null;
 
       if (location == RouteNames.splash) {
-        if (!onboardingCompleted) {
-          return RouteNames.onboarding;
-        }
-        if (!isLoggedIn) {
-          return RouteNames.auth;
-        }
-        if (!roleSelected) {
-          return RouteNames.roleSelector;
-        }
-        return RouteNames.home;
+        return null;
       }
 
-      if (!onboardingCompleted && location != RouteNames.onboarding) {
+      if (!onboardingCompleted &&
+          location != RouteNames.onboarding &&
+          location != RouteNames.splash) {
         return RouteNames.onboarding;
       }
 
-      if (!isLoggedIn && location != RouteNames.auth) {
+      if (onboardingCompleted &&
+          !isLoggedIn &&
+          location != RouteNames.auth &&
+          location != RouteNames.authVerify &&
+          location != RouteNames.splash) {
         return RouteNames.auth;
       }
 
-      if (isLoggedIn && !roleSelected && location != RouteNames.roleSelector) {
+      if (isLoggedIn &&
+          !roleSelected &&
+          onboardingCompleted &&
+          location != RouteNames.roleSelector &&
+          location != RouteNames.splash) {
         return RouteNames.roleSelector;
       }
 
       if (isLoggedIn && roleSelected) {
-        if (location == RouteNames.auth || location == RouteNames.onboarding) {
+        if (location == RouteNames.auth ||
+            location == RouteNames.authVerify ||
+            location == RouteNames.onboarding) {
           return RouteNames.home;
         }
       }
@@ -81,6 +89,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AuthScreen(),
       ),
       GoRoute(
+        path: RouteNames.authVerify,
+        builder: (context, state) => const VerifyOtpScreen(),
+      ),
+      GoRoute(
         path: RouteNames.roleSelector,
         builder: (context, state) => const RoleSelectorScreen(),
       ),
@@ -91,6 +103,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.search,
         builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.createListing,
+        builder: (context, state) => const CreateListingScreen(),
       ),
       GoRoute(
         path: '${RouteNames.listingDetails}/:id',
@@ -157,6 +173,128 @@ class _SplashRedirectScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return const _BrandSplashScreen();
+  }
+}
+
+class _BrandSplashScreen extends ConsumerStatefulWidget {
+  const _BrandSplashScreen();
+
+  @override
+  ConsumerState<_BrandSplashScreen> createState() => _BrandSplashScreenState();
+}
+
+class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(const Duration(milliseconds: 1400), _continueFlow);
+  }
+
+  void _continueFlow() {
+    if (!mounted) {
+      return;
+    }
+    final isLoggedIn = ref.read(
+      authControllerProvider.select(
+        (state) => state.valueOrNull?.isAuthenticated ?? false,
+      ),
+    );
+    final session = ref.read(appSessionControllerProvider);
+
+    if (!session.onboardingCompleted) {
+      context.go(RouteNames.onboarding);
+      return;
+    }
+    if (!isLoggedIn) {
+      context.go(RouteNames.auth);
+      return;
+    }
+    if (session.activeRole == null) {
+      context.go(RouteNames.roleSelector);
+      return;
+    }
+    context.go(RouteNames.home);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F5F7),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Positioned(
+              top: 40,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                child: Center(
+                  child: Container(
+                    width: 320,
+                    height: 320,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [Color(0x1F858C9F), Colors.transparent],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    'Tutta',
+                    style: TextStyle(
+                      color: Color(0xFF072A73),
+                      fontSize: 68,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1.2,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'DIGITAL CONCIERGE',
+                    style: TextStyle(
+                      color: Color(0xFF7A8192),
+                      fontSize: 18,
+                      letterSpacing: 5.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 220),
+                  SizedBox(
+                    width: 240,
+                    child: LinearProgressIndicator(
+                      minHeight: 6,
+                      value: 0.34,
+                      backgroundColor: Color(0xFFD9DDE5),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF072A73),
+                      ),
+                      borderRadius: BorderRadius.all(Radius.circular(999)),
+                    ),
+                  ),
+                  SizedBox(height: 14),
+                  Text(
+                    'PREPARING YOUR STAY',
+                    style: TextStyle(
+                      color: Color(0xFF8E94A2),
+                      fontSize: 15,
+                      letterSpacing: 2,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

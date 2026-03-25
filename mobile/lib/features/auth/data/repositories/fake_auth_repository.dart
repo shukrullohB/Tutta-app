@@ -59,6 +59,35 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AuthUser> signInWithGoogle({
+    required String idToken,
+    String? accessToken,
+    String? email,
+    String? displayName,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    final resolvedEmail = (email != null && email.trim().isNotEmpty)
+        ? email
+        : _demoEmail;
+    final names = (displayName ?? 'Google User').trim().split(RegExp(r'\s+'));
+    final firstName = names.isNotEmpty ? names.first : 'Google';
+    final lastName = names.length > 1 ? names.sublist(1).join(' ') : 'User';
+
+    return AuthUser(
+      id: 'user_google_demo_1',
+      email: resolvedEmail,
+      role: 'guest',
+      firstName: firstName,
+      lastName: lastName,
+      phone: '+998901112233',
+      subscriptionPlan: SubscriptionPlan.free,
+      countryCode: 'UZ',
+      accessToken: accessToken ?? 'demo_google_access_token_user_google_demo_1',
+      refreshToken: 'demo_google_refresh_token_user_google_demo_1',
+    );
+  }
+
+  @override
   Future<Map<String, String>> refresh({required String refreshToken}) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (refreshToken.isEmpty) {

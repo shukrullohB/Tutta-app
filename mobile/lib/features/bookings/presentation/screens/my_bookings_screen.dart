@@ -76,6 +76,10 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
         if (snapshot.connectionState != ConnectionState.done) {
           return Scaffold(
             appBar: AppBar(
+              leading: IconButton(
+                onPressed: () => context.go(RouteNames.home),
+                icon: const Icon(Icons.arrow_back),
+              ),
               title: Text(
                 role == AppRole.host ? 'Host requests' : 'My bookings',
               ),
@@ -93,6 +97,10 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
 
         return Scaffold(
           appBar: AppBar(
+            leading: IconButton(
+              onPressed: () => context.go(RouteNames.home),
+              icon: const Icon(Icons.arrow_back),
+            ),
             title: Text(role == AppRole.host ? 'Host requests' : 'My bookings'),
           ),
           body: Column(
@@ -177,9 +185,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
                                       )
                                       .cancelByGuest(booking.id),
                                 ),
-                                onComplete: () => _runAction(
-                                  () async {},
-                                ),
+                                onComplete: () => _runAction(() async {}),
                                 onProceedToPayment: () => context.push(
                                   '${RouteNames.bookingPayment}/${booking.id}',
                                 ),

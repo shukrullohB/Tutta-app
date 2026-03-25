@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/route_names.dart';
 import '../../../../core/widgets/app_error_view.dart';
 import '../../../../core/widgets/empty_state_view.dart';
 import '../../application/chat_provider.dart';
@@ -15,10 +17,16 @@ class ChatListScreen extends ConsumerWidget {
     final threadsAsync = ref.watch(chatThreadsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chats')),
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.go(RouteNames.home),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: const Text('Chats'),
+      ),
       body: threadsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => AppErrorView(
+        error: (_, _) => AppErrorView(
           message: 'Could not load chats.',
           onRetry: () => ref.invalidate(chatThreadsProvider),
         ),
@@ -33,7 +41,7 @@ class ChatListScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(12),
             itemCount: threads.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final thread = threads[index];
               return ListTile(
@@ -116,9 +124,10 @@ class _ThreadViewState extends ConsumerState<_ThreadView> {
             Expanded(
               child: messagesAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => AppErrorView(
+                error: (_, _) => AppErrorView(
                   message: 'Could not load messages.',
-                  onRetry: () => ref.invalidate(chatMessagesProvider(widget.thread.id)),
+                  onRetry: () =>
+                      ref.invalidate(chatMessagesProvider(widget.thread.id)),
                 ),
                 data: _buildMessages,
               ),
@@ -130,7 +139,9 @@ class _ThreadViewState extends ConsumerState<_ThreadView> {
                     controller: _controller,
                     minLines: 1,
                     maxLines: 4,
-                    decoration: const InputDecoration(hintText: 'Type a message'),
+                    decoration: const InputDecoration(
+                      hintText: 'Type a message',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -157,7 +168,7 @@ class _ThreadViewState extends ConsumerState<_ThreadView> {
     return ListView.separated(
       reverse: true,
       itemCount: messages.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final message = messages[messages.length - 1 - index];
         return Container(
@@ -180,10 +191,9 @@ class _ThreadViewState extends ConsumerState<_ThreadView> {
 
     setState(() => _sending = true);
     try {
-      await ref.read(chatActionsProvider).sendMessage(
-            threadId: widget.thread.id,
-            content: text,
-          );
+      await ref
+          .read(chatActionsProvider)
+          .sendMessage(threadId: widget.thread.id, content: text);
       _controller.clear();
     } finally {
       if (mounted) {

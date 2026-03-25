@@ -6,6 +6,7 @@ class ApiEndpoints {
   static const authLogin = '/auth/login';
   static const authRefresh = '/auth/refresh';
   static const authLogout = '/auth/logout';
+  static const authGoogle = '/auth/google';
   static const usersMe = '/users/me';
 
   // Legacy auth endpoints (to be removed after full auth migration)
@@ -31,22 +32,29 @@ class ApiEndpoints {
 
   static String bookingsByRole(String role) => '$bookings?role=$role';
 
-  static String bookingConfirm(String bookingId) => '${bookingById(bookingId)}/confirm';
+  static String bookingConfirm(String bookingId) =>
+      '${bookingById(bookingId)}/confirm';
 
-  static String bookingCancel(String bookingId) => '${bookingById(bookingId)}/cancel';
+  static String bookingCancel(String bookingId) =>
+      '${bookingById(bookingId)}/cancel';
 
   // Legacy booking endpoints (to be removed after full booking migration)
-  static String guestBookings(String guestUserId) => '$bookings/guest/$guestUserId';
+  static String guestBookings(String guestUserId) =>
+      '$bookings/guest/$guestUserId';
 
   static String hostBookings(String hostUserId) => '$bookings/host/$hostUserId';
 
-  static String bookingReject(String bookingId) => '${bookingById(bookingId)}/reject';
+  static String bookingReject(String bookingId) =>
+      '${bookingById(bookingId)}/reject';
 
-  static String bookingCancelByGuest(String bookingId) => '${bookingById(bookingId)}/cancel-by-guest';
+  static String bookingCancelByGuest(String bookingId) =>
+      '${bookingById(bookingId)}/cancel-by-guest';
 
-  static String bookingComplete(String bookingId) => '${bookingById(bookingId)}/complete';
+  static String bookingComplete(String bookingId) =>
+      '${bookingById(bookingId)}/complete';
 
-  static String bookingPaymentStatus(String bookingId) => '${bookingById(bookingId)}/payment-status';
+  static String bookingPaymentStatus(String bookingId) =>
+      '${bookingById(bookingId)}/payment-status';
 
   static const paymentsIntents = '/payments/intents';
 
@@ -58,7 +66,8 @@ class ApiEndpoints {
 
   static const reviews = '/reviews';
 
-  static String reviewsByListing(String listingId) => '$reviews?listing_id=$listingId';
+  static String reviewsByListing(String listingId) =>
+      '$reviews?listing_id=$listingId';
 
   // Chat contract
   static const chatThreads = '/chat/threads';

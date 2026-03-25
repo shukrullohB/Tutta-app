@@ -2,10 +2,12 @@ abstract final class RouteNames {
   static const splash = '/';
   static const onboarding = '/onboarding';
   static const auth = '/auth';
+  static const authVerify = '/auth/verify';
   static const roleSelector = '/role-selector';
   static const home = '/home';
   static const search = '/search';
   static const listingDetails = '/listing';
+  static const createListing = '/host/listings/new';
   static const bookingRequest = '/booking-request';
   static const bookingPayment = '/booking-payment';
   static const reviewSubmit = '/review-submit';

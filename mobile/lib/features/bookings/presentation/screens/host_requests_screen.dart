@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/route_names.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../auth/application/auth_controller.dart';
 import '../../application/booking_lifecycle_controller.dart';
@@ -42,7 +44,13 @@ class _HostRequestsScreenState extends ConsumerState<HostRequestsScreen> {
 
     if (hostId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Host requests')),
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () => context.go(RouteNames.home),
+            icon: const Icon(Icons.arrow_back),
+          ),
+          title: const Text('Host requests'),
+        ),
         body: const Center(child: Text('Please sign in again.')),
       );
     }
@@ -53,7 +61,13 @@ class _HostRequestsScreenState extends ConsumerState<HostRequestsScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Host requests')),
+            appBar: AppBar(
+              leading: IconButton(
+                onPressed: () => context.go(RouteNames.home),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              title: const Text('Host requests'),
+            ),
             body: Center(child: CircularProgressIndicator()),
           );
         }
@@ -66,7 +80,13 @@ class _HostRequestsScreenState extends ConsumerState<HostRequestsScreen> {
                   .toList(growable: false);
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Host requests')),
+          appBar: AppBar(
+            leading: IconButton(
+              onPressed: () => context.go(RouteNames.home),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            title: const Text('Host requests'),
+          ),
           body: Column(
             children: [
               _HostSummary(rawItems: raw),
@@ -123,9 +143,7 @@ class _HostRequestsScreenState extends ConsumerState<HostRequestsScreen> {
                                   )
                                   .reject(booking.id),
                             ),
-                            onComplete: () => _run(
-                              () async {},
-                            ),
+                            onComplete: () => _run(() async {}),
                           );
                         },
                         separatorBuilder: (_, index) =>
