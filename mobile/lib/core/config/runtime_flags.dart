@@ -25,4 +25,9 @@ class RuntimeFlags {
     'USE_FAKE_CHAT',
     defaultValue: true,
   );
+
+  static const bool useFakeListings = bool.fromEnvironment(
+    'USE_FAKE_LISTINGS',
+    defaultValue: true,
+  );
 }

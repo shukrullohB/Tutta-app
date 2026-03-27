@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/route_names.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../application/review_submit_controller.dart';
 
@@ -56,7 +57,15 @@ class _ReviewSubmitScreenState extends ConsumerState<ReviewSubmitScreen> {
     final loading = ref.watch(reviewSubmitControllerProvider).isLoading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Leave review')),
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.canPop()
+              ? context.pop()
+              : context.go(RouteNames.bookings),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: const Text('Leave review'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

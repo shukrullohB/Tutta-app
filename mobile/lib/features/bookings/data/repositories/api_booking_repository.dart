@@ -53,6 +53,7 @@ class ApiBookingRepository implements BookingRepository {
         'listing': int.tryParse(listingId) ?? listingId,
         'start_date': checkIn.toIso8601String().split('T').first,
         'end_date': checkOut.toIso8601String().split('T').first,
+        'guests_count': guests,
       },
     );
 
@@ -135,7 +136,10 @@ class ApiBookingRepository implements BookingRepository {
     required String bookingId,
     required String hostUserId,
   }) {
-    throw const AppException('Mark completed is not available in backend yet.');
+    return _runAction(
+      bookingId: bookingId,
+      pathSuffix: 'complete',
+    );
   }
 
   @override
@@ -212,6 +216,8 @@ class ApiBookingRepository implements BookingRepository {
         return BookingStatus.confirmed;
       case 'cancelled':
         return BookingStatus.cancelledByGuest;
+      case 'completed':
+        return BookingStatus.completed;
       default:
         return BookingStatus.pendingHostApproval;
     }

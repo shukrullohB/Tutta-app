@@ -54,6 +54,29 @@ class ApiClient {
     }
   }
 
+  Future<ApiResult<Map<String, dynamic>>> put(
+    String path, {
+    Map<String, dynamic>? data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      final response = await _dio.put<Map<String, dynamic>>(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: Options(headers: headers),
+      );
+      return ApiSuccess(response.data ?? <String, dynamic>{});
+    } on DioException catch (error) {
+      return ApiFailure(_toFailure(error));
+    } catch (_) {
+      return const ApiFailure(
+        Failure(message: 'Unknown error occurred while updating data.'),
+      );
+    }
+  }
+
   Failure _toFailure(DioException error) {
     final payload = error.response?.data;
     String message = 'Network error. Please try again.';

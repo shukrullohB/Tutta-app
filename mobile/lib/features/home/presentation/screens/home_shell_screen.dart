@@ -107,9 +107,9 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
         title: 'Favorites',
         subtitle: 'Saved listings and host profiles.',
       ),
-      _HomeTab(
+      _BookingsEntryTab(
         title: 'Bookings',
-        subtitle: 'Active, upcoming, and completed stays.',
+        subtitle: 'Track requests and upcoming stays in Uzbekistan.',
       ),
       _HomeTab(title: 'Chat', subtitle: 'Talk to hosts before booking.'),
       _HomeTab(
@@ -299,19 +299,30 @@ class _RenterHomeTab extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const _NearbyCard(
-            title: 'Rosewood Cottage',
-            subtitle: '12 miles away • Jun 12 - 17',
-            price: '\$120 / night',
+            title: 'Samarkand Courtyard Flat',
+            subtitle: 'Samarkand • 3 nights',
+            price: '850 000 UZS / night',
             rating: '4.95',
+            imageAssetPath: 'assets/images/home2.png',
             color: Color(0xFF5B8F86),
           ),
           const SizedBox(height: 10),
           const _NearbyCard(
-            title: 'Downtown Sky Loft',
-            subtitle: '3 miles away • Jun 15 - 20',
-            price: '\$210 / night',
+            title: 'Bukhara Old City Studio',
+            subtitle: 'Bukhara • 2 nights',
+            price: '620 000 UZS / night',
             rating: '4.78',
+            imageAssetPath: 'assets/images/home4.png',
             color: Color(0xFFA9957B),
+          ),
+          const SizedBox(height: 10),
+          const _NearbyCard(
+            title: 'Cozy Living Room Stay',
+            subtitle: 'Tashkent • 2 nights',
+            price: '740 000 UZS / night',
+            rating: '4.88',
+            imageAssetPath: 'assets/images/home3.png',
+            color: Color(0xFF7A7B87),
           ),
         ],
       ).animate().fadeIn(duration: 260.ms),
@@ -419,14 +430,12 @@ class _FeaturedStayCard extends StatelessWidget {
         children: [
           Stack(
             children: [
-              Container(
+              SizedBox(
                 height: 320,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFF3FA7E3), Color(0xFF0A6BAA)],
-                  ),
+                width: double.infinity,
+                child: Image.asset(
+                  'assets/images/home1.png',
+                  fit: BoxFit.cover,
                 ),
               ),
               Positioned(
@@ -442,7 +451,7 @@ class _FeaturedStayCard extends StatelessWidget {
                     borderRadius: BorderRadius.all(Radius.circular(999)),
                   ),
                   child: const Text(
-                    '\$450 / night',
+                    '1 350 000 UZS / night',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -470,7 +479,7 @@ class _FeaturedStayCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Azure Cliffside Villa',
+                        'Amirsoy Mountain Chalet',
                         style: TextStyle(
                           color: Color(0xFF071E57),
                           fontSize: 34 / 2,
@@ -479,7 +488,7 @@ class _FeaturedStayCard extends StatelessWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Santorini, Greece',
+                        'Tashkent Region, Uzbekistan',
                         style: TextStyle(color: Color(0xFF4E5568)),
                       ),
                     ],
@@ -502,6 +511,7 @@ class _NearbyCard extends StatelessWidget {
     required this.price,
     required this.rating,
     required this.color,
+    this.imageAssetPath,
   });
 
   final String title;
@@ -509,6 +519,7 @@ class _NearbyCard extends StatelessWidget {
   final String price;
   final String rating;
   final Color color;
+  final String? imageAssetPath;
 
   @override
   Widget build(BuildContext context) {
@@ -520,12 +531,14 @@ class _NearbyCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 108,
-            height: 98,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: SizedBox(
+              width: 108,
+              height: 98,
+              child: imageAssetPath == null
+                  ? Container(color: color)
+                  : Image.asset(imageAssetPath!, fit: BoxFit.cover),
             ),
           ),
           const SizedBox(width: 12),
@@ -678,6 +691,103 @@ class _HomeTab extends StatelessWidget {
                     ActionChip(
                       label: const Text('Premium'),
                       onPressed: () => context.go(RouteNames.premiumPaywall),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08, end: 0),
+    );
+  }
+}
+
+class _BookingsEntryTab extends StatelessWidget {
+  const _BookingsEntryTab({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1E2133), Color(0xFF141522)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: const Color(0x1FFFFFFF)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x2A000000),
+                blurRadius: 30,
+                offset: Offset(0, 20),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Color(0xB3FFFFFF)),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2E44),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tutta booking rules',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Uzbekistan only. Short-term rental only. Maximum stay is 30 days.',
+                        style: TextStyle(color: Color(0xFFD2D7E5)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () => context.go(RouteNames.bookings),
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      label: const Text('Open my bookings'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => context.go(RouteNames.search),
+                      icon: const Icon(Icons.search),
+                      label: const Text('Find stays in Uzbekistan'),
                     ),
                   ],
                 ),

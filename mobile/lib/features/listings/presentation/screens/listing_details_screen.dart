@@ -27,7 +27,15 @@ class ListingDetailsScreen extends ConsumerWidget {
         final listing = snapshot.data;
         if (listing == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Listing')),
+            appBar: AppBar(
+              leading: IconButton(
+                onPressed: () => context.canPop()
+                    ? context.pop()
+                    : context.go(RouteNames.search),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              title: const Text('Listing'),
+            ),
             body: const Center(child: Text('Listing not found.')),
           );
         }
@@ -35,6 +43,9 @@ class ListingDetailsScreen extends ConsumerWidget {
         final hasPremium =
             ref.watch(authControllerProvider).valueOrNull?.user?.isPremium ??
             false;
+        final currentUserId =
+            ref.watch(authControllerProvider).valueOrNull?.user?.id;
+        final isOwner = currentUserId != null && currentUserId == listing.hostId;
 
         final freeStayLocked =
             listing.type == ListingType.freeStay && !hasPremium;
@@ -51,6 +62,21 @@ class ListingDetailsScreen extends ConsumerWidget {
                 pinned: true,
                 expandedHeight: 280,
                 leading: const BackButton(),
+                actions: [
+                  if (isOwner)
+                    IconButton(
+                      onPressed: () => context.push(
+                        '${RouteNames.listingAvailability}/${listing.id}',
+                      ),
+                      icon: const Icon(Icons.calendar_month_outlined),
+                    ),
+                  if (isOwner)
+                    IconButton(
+                      onPressed: () =>
+                          context.push('${RouteNames.editListing}/${listing.id}'),
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: _ListingHero(
                     imageUrl: imageUrl,
@@ -247,7 +273,7 @@ class _ListingHero extends StatelessWidget {
           Image.network(
             imageUrl!,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _fallback(),
+            errorBuilder: (_, _, _) => _fallback(),
           ),
           const DecoratedBox(
             decoration: BoxDecoration(

@@ -1,4 +1,6 @@
 import '../../../../core/errors/app_exception.dart';
+import '../../domain/models/availability_day.dart';
+import '../../domain/models/create_listing_input.dart';
 import '../../domain/models/listing.dart';
 import '../../domain/models/listing_search_params.dart';
 import '../../domain/repositories/listings_repository.dart';
@@ -63,6 +65,8 @@ class FakeListingsRepository implements ListingsRepository {
       description: 'Practice English and Uzbek through cultural exchange.',
     ),
   ];
+  static final Map<String, Map<DateTime, AvailabilityDay>> _availabilityByListing =
+      <String, Map<DateTime, AvailabilityDay>>{};
 
   @override
   Future<List<Listing>> search({
@@ -78,6 +82,7 @@ class FakeListingsRepository implements ListingsRepository {
     }
 
     final city = params.city.trim().toLowerCase();
+    final cityToken = city.split(',').first.trim();
     final district = params.district.trim().toLowerCase();
 
     return _seed
@@ -90,16 +95,32 @@ class FakeListingsRepository implements ListingsRepository {
             return false;
           }
 
-          if (city.isNotEmpty && listing.city.toLowerCase() != city) {
+          final listingCity = listing.city.toLowerCase();
+          if (cityToken.isNotEmpty &&
+              !listingCity.contains(cityToken) &&
+              !listing.title.toLowerCase().contains(cityToken) &&
+              !(listing.landmark?.toLowerCase().contains(cityToken) ?? false) &&
+              !(listing.metro?.toLowerCase().contains(cityToken) ?? false)) {
             return false;
           }
 
           if (district.isNotEmpty &&
-              !listing.district.toLowerCase().contains(district)) {
+              !listing.district.toLowerCase().contains(district) &&
+              !(listing.landmark?.toLowerCase().contains(district) ?? false) &&
+              !(listing.metro?.toLowerCase().contains(district) ?? false)) {
             return false;
           }
 
           if (params.guests > listing.maxGuests) {
+            return false;
+          }
+
+          if (params.types.isNotEmpty && !params.types.contains(listing.type)) {
+            return false;
+          }
+
+          if (params.amenities.isNotEmpty &&
+              !params.amenities.every(listing.amenities.contains)) {
             return false;
           }
 
@@ -117,5 +138,89 @@ class FakeListingsRepository implements ListingsRepository {
       }
     }
     return null;
+  }
+
+  @override
+  Future<Listing> createListing(CreateListingInput input) async {
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    return Listing(
+      id: 'draft_${DateTime.now().millisecondsSinceEpoch}',
+      hostId: 'local_host',
+      title: input.title.trim(),
+      city: input.city.trim(),
+      district: input.district.trim(),
+      type: input.type,
+      maxGuests: input.maxGuests,
+      minDays: input.minDays,
+      maxDays: input.maxDays,
+      nightlyPriceUzs: input.type == ListingType.freeStay
+          ? null
+          : (input.nightlyPriceUzs ?? 0),
+      isActive: true,
+      description: input.description.trim(),
+      landmark: input.landmark?.trim(),
+      metro: input.metro?.trim(),
+    );
+  }
+
+  @override
+  Future<Listing> updateListing({
+    required String listingId,
+    required CreateListingInput input,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    return Listing(
+      id: listingId,
+      hostId: 'local_host',
+      title: input.title.trim(),
+      city: input.city.trim(),
+      district: input.district.trim(),
+      type: input.type,
+      maxGuests: input.maxGuests,
+      minDays: input.minDays,
+      maxDays: input.maxDays,
+      nightlyPriceUzs: input.type == ListingType.freeStay
+          ? null
+          : (input.nightlyPriceUzs ?? 0),
+      isActive: true,
+      description: input.description.trim(),
+      landmark: input.landmark?.trim(),
+      metro: input.metro?.trim(),
+    );
+  }
+
+  @override
+  Future<List<AvailabilityDay>> getAvailability(String listingId) async {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    final data = _availabilityByListing[listingId];
+    if (data == null) {
+      return const <AvailabilityDay>[];
+    }
+    final result = data.values.toList(growable: false)
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return result;
+  }
+
+  @override
+  Future<List<AvailabilityDay>> upsertAvailability({
+    required String listingId,
+    required List<AvailabilityDay> days,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 240));
+    final map = _availabilityByListing.putIfAbsent(
+      listingId,
+      () => <DateTime, AvailabilityDay>{},
+    );
+    for (final day in days) {
+      final key = DateTime(day.date.year, day.date.month, day.date.day);
+      map[key] = AvailabilityDay(
+        date: key,
+        isAvailable: day.isAvailable,
+        note: day.note,
+      );
+    }
+    final result = map.values.toList(growable: false)
+      ..sort((a, b) => a.date.compareTo(b.date));
+    return result;
   }
 }

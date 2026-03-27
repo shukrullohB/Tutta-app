@@ -25,6 +25,9 @@ class ApiEndpoints {
 
   static String listingUnpublish(String id) => '${listingById(id)}/unpublish';
 
+  static String listingAvailability(String id) =>
+      '${listingById(id)}/availability';
+
   // Bookings contract
   static const bookings = '/bookings';
 

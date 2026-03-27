@@ -6,23 +6,28 @@ class AppSessionState {
   const AppSessionState({
     required this.onboardingCompleted,
     required this.activeRole,
+    required this.splashSeen,
   });
 
   const AppSessionState.initial()
     : onboardingCompleted = false,
-      activeRole = null;
+      activeRole = null,
+      splashSeen = false;
 
   final bool onboardingCompleted;
   final AppRole? activeRole;
+  final bool splashSeen;
 
   AppSessionState copyWith({
     bool? onboardingCompleted,
     AppRole? activeRole,
+    bool? splashSeen,
     bool clearRole = false,
   }) {
     return AppSessionState(
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       activeRole: clearRole ? null : (activeRole ?? this.activeRole),
+      splashSeen: splashSeen ?? this.splashSeen,
     );
   }
 }
@@ -40,6 +45,13 @@ class AppSessionController extends StateNotifier<AppSessionState> {
 
   void clearRole() {
     state = state.copyWith(clearRole: true);
+  }
+
+  void markSplashSeen() {
+    if (state.splashSeen) {
+      return;
+    }
+    state = state.copyWith(splashSeen: true);
   }
 }
 

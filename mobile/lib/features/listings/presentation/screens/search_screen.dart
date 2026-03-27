@@ -16,15 +16,12 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   late final TextEditingController _cityController;
-  late final TextEditingController _districtController;
-  int _gridColumns = 2;
 
   @override
   void initState() {
     super.initState();
     final state = ref.read(searchControllerProvider);
     _cityController = TextEditingController(text: state.city);
-    _districtController = TextEditingController(text: state.district);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(searchControllerProvider.notifier).search();
@@ -34,7 +31,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   void dispose() {
     _cityController.dispose();
-    _districtController.dispose();
     super.dispose();
   }
 
@@ -93,7 +89,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             Icons.search,
                             color: Color(0xFF707788),
                           ),
-                          hintText: 'Paris, France',
+                          hintText: 'Tashkent, Uzbekistan',
                           hintStyle: TextStyle(color: Color(0xFF707788)),
                           contentPadding: EdgeInsets.symmetric(vertical: 14),
                         ),
@@ -167,14 +163,31 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               ? 'Free Stay on'
                               : 'Free Stay off',
                           icon: Icons.swap_horiz,
-                          onTap: () => ref
-                              .read(searchControllerProvider.notifier)
-                              .setIncludeFreeStay(!state.includeFreeStay),
+                          onTap: () {
+                            ref
+                                .read(searchControllerProvider.notifier)
+                                .setIncludeFreeStay(!state.includeFreeStay);
+                            ref.read(searchControllerProvider.notifier).search();
+                          },
                         ),
                         _FilterPill(
                           label: 'Guests: ${state.guests}',
                           icon: Icons.people_outline,
                           onTap: () => _pickGuests(context, state.guests),
+                        ),
+                        _FilterPill(
+                          label: state.types.isEmpty
+                              ? 'Any type'
+                              : '${state.types.length} type(s)',
+                          icon: Icons.home_work_outlined,
+                          onTap: () => _openFiltersSheet(context, state),
+                        ),
+                        _FilterPill(
+                          label: state.amenities.isEmpty
+                              ? 'Amenities'
+                              : '${state.amenities.length} amenity(s)',
+                          icon: Icons.checklist_rounded,
+                          onTap: () => _openFiltersSheet(context, state),
                         ),
                       ],
                     ),
@@ -182,6 +195,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ).animate().fadeIn(duration: 260.ms).slideY(begin: -0.1, end: 0),
             ),
+            if (state.loading)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(14, 8, 14, 0),
+                  child: LinearProgressIndicator(minHeight: 3),
+                ),
+              ),
             if (state.errorMessage != null)
               SliverToBoxAdapter(
                 child: Padding(
@@ -306,47 +326,185 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     SearchState state,
   ) async {
     final districtController = TextEditingController(text: state.district);
+    final selectedTypes = state.types.toSet();
+    final selectedAmenities = state.amenities.toSet();
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Filters',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        return StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Filters',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: districtController,
+                    decoration: const InputDecoration(
+                      labelText: 'District / Landmark / Metro',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Property type',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ListingType.values
+                        .where((type) => type != ListingType.freeStay)
+                        .map(
+                          (type) => FilterChip(
+                            label: Text(_typeLabel(type)),
+                            selected: selectedTypes.contains(type),
+                            onSelected: (selected) {
+                              setModalState(() {
+                                if (selected) {
+                                  selectedTypes.add(type);
+                                } else {
+                                  selectedTypes.remove(type);
+                                }
+                              });
+                            },
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Amenities',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _supportedAmenities
+                        .map(
+                          (amenity) => FilterChip(
+                            label: Text(_amenityLabel(amenity)),
+                            selected: selectedAmenities.contains(amenity),
+                            onSelected: (selected) {
+                              setModalState(() {
+                                if (selected) {
+                                  selectedAmenities.add(amenity);
+                                } else {
+                                  selectedAmenities.remove(amenity);
+                                }
+                              });
+                            },
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            districtController.clear();
+                            setModalState(() {
+                              selectedTypes.clear();
+                              selectedAmenities.clear();
+                            });
+                          },
+                          child: const Text('Reset'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Apply'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: districtController,
-                decoration: const InputDecoration(labelText: 'District'),
-              ),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Apply'),
-              ),
-            ],
+            ),
           ),
         );
       },
     );
     if (result == true) {
-      ref
-          .read(searchControllerProvider.notifier)
-          .setDistrict(districtController.text.trim());
-      ref.read(searchControllerProvider.notifier).search();
+      final controller = ref.read(searchControllerProvider.notifier);
+      controller.setDistrict(districtController.text.trim());
+      controller.setTypes(selectedTypes.toList(growable: false));
+      controller.setAmenities(selectedAmenities.toList(growable: false));
+      controller.search();
     }
     districtController.dispose();
+  }
+}
+
+const List<ListingAmenity> _supportedAmenities = <ListingAmenity>[
+  ListingAmenity.wifi,
+  ListingAmenity.airConditioner,
+  ListingAmenity.kitchen,
+  ListingAmenity.washingMachine,
+  ListingAmenity.parking,
+  ListingAmenity.privateBathroom,
+  ListingAmenity.kidsAllowed,
+  ListingAmenity.petsAllowed,
+  ListingAmenity.hostLivesTogether,
+  ListingAmenity.instantConfirm,
+];
+
+String _typeLabel(ListingType type) {
+  switch (type) {
+    case ListingType.apartment:
+      return 'Apartment';
+    case ListingType.room:
+      return 'Room';
+    case ListingType.homePart:
+      return 'Part of home';
+    case ListingType.freeStay:
+      return 'Free Stay';
+  }
+}
+
+String _amenityLabel(ListingAmenity amenity) {
+  switch (amenity) {
+    case ListingAmenity.wifi:
+      return 'Wi-Fi';
+    case ListingAmenity.airConditioner:
+      return 'Air conditioning';
+    case ListingAmenity.kitchen:
+      return 'Kitchen';
+    case ListingAmenity.washingMachine:
+      return 'Washing machine';
+    case ListingAmenity.parking:
+      return 'Parking';
+    case ListingAmenity.privateBathroom:
+      return 'Private bathroom';
+    case ListingAmenity.kidsAllowed:
+      return 'Kids allowed';
+    case ListingAmenity.petsAllowed:
+      return 'Pets allowed';
+    case ListingAmenity.womenOnly:
+      return 'Women only';
+    case ListingAmenity.menOnly:
+      return 'Men only';
+    case ListingAmenity.hostLivesTogether:
+      return 'Host lives together';
+    case ListingAmenity.instantConfirm:
+      return 'Instant confirm';
   }
 }
 
@@ -454,7 +612,7 @@ class _SearchListingTile extends StatelessWidget {
                       Text(
                         listing.nightlyPriceUzs == null
                             ? 'Free'
-                            : '€${((listing.nightlyPriceUzs ?? 0) / 15000).round()}',
+                            : '${listing.nightlyPriceUzs} UZS',
                         style: const TextStyle(
                           color: Color(0xFF6A480A),
                           fontSize: 16,
@@ -482,97 +640,6 @@ class _SearchListingTile extends StatelessWidget {
   }
 }
 
-class _ListingCard extends StatelessWidget {
-  const _ListingCard({
-    required this.listing,
-    required this.index,
-    required this.total,
-    required this.onTap,
-  });
-
-  final Listing listing;
-  final int index;
-  final int total;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl = listing.imageUrls.isEmpty ? null : listing.imageUrls.first;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0x0AFFFFFF),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0x1FFFFFFF)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x33000000),
-              blurRadius: 18,
-              offset: Offset(0, 12),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          children: [
-            Expanded(
-              child: _ListingImage(imageUrl: imageUrl, listing: listing),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0x26C8A84B),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Text(
-                      '${index + 1}',
-                      style: const TextStyle(
-                        color: Color(0xFFC8A84B),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      listing.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xCCFFFFFF),
-                      ),
-                    ),
-                  ),
-                  if (total > 0)
-                    Text(
-                      '${index + 1}/$total',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Color(0x669FA1B3),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ListingImage extends StatelessWidget {
   const _ListingImage({required this.imageUrl, required this.listing});
 
@@ -586,7 +653,7 @@ class _ListingImage extends StatelessWidget {
         imageUrl!,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _imageFallback(),
+        errorBuilder: (_, _, _) => _imageFallback(),
       );
     }
 
@@ -624,44 +691,6 @@ class _ListingImage extends StatelessWidget {
                 style: const TextStyle(fontSize: 11, color: Color(0xB39FA1B3)),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ColumnsButton extends StatelessWidget {
-  const _ColumnsButton({
-    required this.title,
-    required this.active,
-    required this.onTap,
-  });
-
-  final String title;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: AnimatedContainer(
-        duration: 160.ms,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: active ? const Color(0x26C8A84B) : const Color(0x1AFFFFFF),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: active ? const Color(0xFFC8A84B) : const Color(0x1FFFFFFF),
-          ),
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            color: active ? const Color(0xFFC8A84B) : const Color(0x809FA1B3),
           ),
         ),
       ),
@@ -839,32 +868,6 @@ class _NavButton extends StatelessWidget {
         child: Icon(icon),
       ),
     );
-  }
-}
-
-class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _SearchHeaderDelegate({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return child;
-  }
-
-  @override
-  double get maxExtent => 58;
-
-  @override
-  double get minExtent => 58;
-
-  @override
-  bool shouldRebuild(covariant _SearchHeaderDelegate oldDelegate) {
-    return false;
   }
 }
 

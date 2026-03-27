@@ -16,6 +16,8 @@ import '../../features/home/presentation/screens/home_shell_screen.dart';
 import '../../features/listings/presentation/screens/listing_details_screen.dart';
 import '../../features/listings/presentation/screens/search_screen.dart';
 import '../../features/listings/presentation/screens/create_listing_screen.dart';
+import '../../features/listings/presentation/screens/edit_listing_screen.dart';
+import '../../features/listings/presentation/screens/listing_availability_screen.dart';
 import '../../features/premium/presentation/screens/premium_paywall_screen.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
 import '../../features/profile/presentation/screens/support_screen.dart';
@@ -109,6 +111,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CreateListingScreen(),
       ),
       GoRoute(
+        path: '${RouteNames.editListing}/:id',
+        builder: (context, state) {
+          final listingId = state.pathParameters['id'] ?? '';
+          return EditListingScreen(listingId: listingId);
+        },
+      ),
+      GoRoute(
+        path: '${RouteNames.listingAvailability}/:id',
+        builder: (context, state) {
+          final listingId = state.pathParameters['id'] ?? '';
+          return ListingAvailabilityScreen(listingId: listingId);
+        },
+      ),
+      GoRoute(
         path: '${RouteNames.listingDetails}/:id',
         builder: (context, state) {
           final listingId = state.pathParameters['id'] ?? '';
@@ -188,7 +204,23 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 1400), _continueFlow);
+    final session = ref.read(appSessionControllerProvider);
+    if (session.splashSeen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _continueFlow();
+      });
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      ref.read(appSessionControllerProvider.notifier).markSplashSeen();
+      Future<void>.delayed(const Duration(milliseconds: 1400), _continueFlow);
+    });
   }
 
   void _continueFlow() {
@@ -266,20 +298,7 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  SizedBox(height: 220),
-                  SizedBox(
-                    width: 240,
-                    child: LinearProgressIndicator(
-                      minHeight: 6,
-                      value: 0.34,
-                      backgroundColor: Color(0xFFD9DDE5),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFF072A73),
-                      ),
-                      borderRadius: BorderRadius.all(Radius.circular(999)),
-                    ),
-                  ),
-                  SizedBox(height: 14),
+                  SizedBox(height: 240),
                   Text(
                     'PREPARING YOUR STAY',
                     style: TextStyle(

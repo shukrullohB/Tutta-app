@@ -120,7 +120,13 @@ class _HostRequestsScreenState extends ConsumerState<HostRequestsScreen> {
               Expanded(
                 child: items.isEmpty
                     ? const Center(
-                        child: Text('No requests for selected filter.'),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: Text(
+                            'No requests for this filter yet. New Uzbekistan short-stay requests will appear here.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.all(16),

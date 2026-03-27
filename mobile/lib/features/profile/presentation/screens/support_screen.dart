@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../app/router/route_names.dart';
 
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
@@ -6,7 +9,15 @@ class SupportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Support')),
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.canPop()
+              ? context.pop()
+              : context.go(RouteNames.home),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: const Text('Support'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: const [

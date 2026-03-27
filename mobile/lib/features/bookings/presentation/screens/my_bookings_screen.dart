@@ -53,14 +53,30 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
 
     if (userId == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Bookings')),
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () => context.canPop()
+                ? context.pop()
+                : context.go(RouteNames.home),
+            icon: const Icon(Icons.arrow_back),
+          ),
+          title: const Text('Bookings'),
+        ),
         body: const Center(child: Text('Please sign in to view bookings.')),
       );
     }
 
     if (role == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Bookings')),
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () => context.canPop()
+                ? context.pop()
+                : context.go(RouteNames.home),
+            icon: const Icon(Icons.arrow_back),
+          ),
+          title: const Text('Bookings'),
+        ),
         body: const Center(child: Text('Select renter or host mode first.')),
       );
     }
@@ -105,6 +121,10 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
           ),
           body: Column(
             children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(12, 10, 12, 0),
+                child: _BookingScopeBanner(),
+              ),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(
@@ -135,13 +155,7 @@ class _MyBookingsScreenState extends ConsumerState<MyBookingsScreen> {
               ),
               Expanded(
                 child: items.isEmpty
-                    ? Center(
-                        child: Text(
-                          role == AppRole.host
-                              ? 'No incoming booking requests for this filter.'
-                              : 'No bookings for this filter.',
-                        ),
-                      )
+                    ? _BookingsEmptyState(role: role)
                     : ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
@@ -318,7 +332,7 @@ class _BookingTile extends StatelessWidget {
       return actions;
     }
 
-    if (booking.status == BookingStatus.confirmed && booking.isReviewAllowed) {
+    if (booking.status == BookingStatus.completed && booking.isReviewAllowed) {
       return [
         OutlinedButton(
           onPressed: loading ? null : onLeaveReview,
@@ -460,6 +474,73 @@ class _MetricChip extends StatelessWidget {
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BookingScopeBanner extends StatelessWidget {
+  const _BookingScopeBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Tutta Booking Rules',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Uzbekistan only. Short-term rental only. Max stay is 30 days.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookingsEmptyState extends StatelessWidget {
+  const _BookingsEmptyState({required this.role});
+
+  final AppRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.event_busy_outlined, size: 34),
+            const SizedBox(height: 10),
+            Text(
+              role == AppRole.host
+                  ? 'No incoming booking requests yet.'
+                  : 'No bookings found for this filter.',
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              role == AppRole.host
+                  ? 'Once guests request short stays in Uzbekistan, requests will appear here.'
+                  : 'Try changing the filter or discover listings in Uzbekistan to create your first booking.',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

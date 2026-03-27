@@ -1,6 +1,7 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from apps.listings.models import AvailabilityDay
 from apps.users.models import User
 
 
@@ -13,17 +14,198 @@ class ListingApiTests(APITestCase):
             last_name='User',
             role='host',
         )
+        self.guest = User.objects.create_user(
+            email='guest@example.com',
+            password='StrongPass123!',
+            first_name='Guest',
+            last_name='User',
+            role='guest',
+        )
+        self.admin = User.objects.create_superuser(
+            email='admin@example.com',
+            password='StrongPass123!',
+            first_name='Admin',
+            last_name='User',
+            role='host',
+        )
 
     def test_host_can_create_listing(self):
         self.client.force_authenticate(user=self.host)
         payload = {
             'title': 'Cozy Apartment',
             'description': 'Central location and fast wifi',
-            'location': 'Tashkent',
+            'city': 'Tashkent',
+            'district': 'Yunusabad',
             'listing_type': 'home',
             'price_per_night': '75.00',
             'max_guests': 3,
+            'min_days': 1,
+            'max_days': 10,
         }
-        response = self.client.post('/api/listings/', payload, format='multipart')
+        response = self.client.post('/api/listings/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['title'], payload['title'])
+        self.assertEqual(response.data['city'], 'Tashkent')
+        self.assertEqual(response.data['district'], 'Yunusabad')
+        self.assertEqual(response.data['moderation_status'], 'draft')
+        self.assertFalse(response.data['is_active'])
+
+    def test_host_can_create_free_stay_listing(self):
+        self.client.force_authenticate(user=self.host)
+        payload = {
+            'title': 'Language exchange room',
+            'description': 'Free stay for cultural exchange',
+            'city': 'Samarkand',
+            'district': 'Registan',
+            'listing_type': 'free_stay',
+            'max_guests': 1,
+            'min_days': 2,
+            'max_days': 14,
+            'free_stay_profile': {
+                'languages_communication': ['uz', 'en'],
+                'languages_practice': ['en'],
+                'host_lives_together': True,
+                'terms': 'Respect local customs',
+            },
+        }
+        response = self.client.post('/api/listings/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['listing_type'], 'free_stay')
+        self.assertTrue(response.data['is_free_stay'])
+        self.assertIsNone(response.data['price_per_night'])
+
+    def test_listing_visibility_respects_moderation_status(self):
+        self.client.force_authenticate(user=self.host)
+        create_response = self.client.post(
+            '/api/listings/',
+            {
+                'title': 'Pending listing',
+                'description': 'Needs approval',
+                'city': 'Tashkent',
+                'district': 'Mirzo Ulugbek',
+                'listing_type': 'room',
+                'price_per_night': '50.00',
+                'max_guests': 2,
+                'min_days': 1,
+                'max_days': 7,
+            },
+            format='json',
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        listing_id = create_response.data['id']
+
+        # Host can see own draft listing.
+        mine_response = self.client.get('/api/listings/?mine=true')
+        self.assertEqual(mine_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(mine_response.data['count'], 1)
+
+        # Public feed should not include unapproved listing.
+        self.client.force_authenticate(user=None)
+        public_response = self.client.get('/api/listings/')
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.data['count'], 0)
+
+        # Host submits for moderation.
+        self.client.force_authenticate(user=self.host)
+        publish_response = self.client.post(f'/api/listings/{listing_id}/publish', {}, format='json')
+        self.assertEqual(publish_response.status_code, status.HTTP_200_OK)
+        self.assertIn('moderation', publish_response.data['detail'])
+
+        # Admin approves, listing becomes public (if active=true).
+        self.client.force_authenticate(user=self.admin)
+        approve_response = self.client.post(f'/api/listings/{listing_id}/approve', {}, format='json')
+        self.assertEqual(approve_response.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(user=None)
+        public_after_approve = self.client.get('/api/listings/')
+        self.assertEqual(public_after_approve.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_after_approve.data['count'], 1)
+
+    def test_updating_listing_sets_pending_moderation(self):
+        self.client.force_authenticate(user=self.host)
+        create_response = self.client.post(
+            '/api/listings/',
+            {
+                'title': 'Editable listing',
+                'description': 'Before edit',
+                'city': 'Tashkent',
+                'district': 'Yakkasaray',
+                'listing_type': 'home',
+                'price_per_night': '80.00',
+                'max_guests': 2,
+                'min_days': 1,
+                'max_days': 10,
+            },
+            format='json',
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        listing_id = create_response.data['id']
+
+        self.client.force_authenticate(user=self.admin)
+        approve_response = self.client.post(f'/api/listings/{listing_id}/approve', {}, format='json')
+        self.assertEqual(approve_response.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(user=self.host)
+        update_response = self.client.put(
+            f'/api/listings/{listing_id}/manage',
+            {
+                'title': 'Editable listing (updated)',
+                'description': 'After edit',
+                'city': 'Tashkent',
+                'district': 'Yakkasaray',
+                'location': 'Tashkent, Yakkasaray',
+                'listing_type': 'home',
+                'price_per_night': '85.00',
+                'max_guests': 2,
+                'min_days': 1,
+                'max_days': 10,
+                'show_phone': False,
+                'free_stay_profile': {},
+            },
+            format='json',
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(update_response.data['moderation_status'], 'pending')
+
+    def test_host_can_set_availability_days(self):
+        self.client.force_authenticate(user=self.host)
+        create_response = self.client.post(
+            '/api/listings/',
+            {
+                'title': 'Availability listing',
+                'description': 'Calendar test',
+                'city': 'Tashkent',
+                'district': 'Yunusabad',
+                'listing_type': 'room',
+                'price_per_night': '40.00',
+                'max_guests': 2,
+                'min_days': 1,
+                'max_days': 7,
+            },
+            format='json',
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        listing_id = create_response.data['id']
+
+        put_response = self.client.put(
+            f'/api/listings/{listing_id}/availability',
+            {
+                'days': [
+                    {'date': '2030-07-10', 'is_available': False, 'note': 'maintenance'},
+                    {'date': '2030-07-11', 'is_available': True},
+                ]
+            },
+            format='json',
+        )
+        self.assertEqual(put_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(AvailabilityDay.objects.filter(listing_id=listing_id).count(), 2)
+
+        self.client.force_authenticate(user=None)
+        public_get = self.client.get(f'/api/listings/{listing_id}/availability')
+        self.assertEqual(public_get.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(public_get.data['results']), 1)
+
+        self.client.force_authenticate(user=self.guest)
+        guest_get = self.client.get(f'/api/listings/{listing_id}/availability')
+        self.assertEqual(guest_get.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(guest_get.data['results']), 2)

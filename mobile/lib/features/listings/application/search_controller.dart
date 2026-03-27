@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/runtime_flags.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../auth/application/auth_controller.dart';
+import '../../../core/network/api_client.dart';
+import '../data/repositories/api_listings_repository.dart';
 import '../data/repositories/fake_listings_repository.dart';
 import '../domain/models/listing.dart';
 import '../domain/models/listing_search_params.dart';
@@ -13,6 +16,8 @@ class SearchState {
     required this.district,
     required this.guests,
     required this.includeFreeStay,
+    required this.types,
+    required this.amenities,
     required this.items,
     required this.errorMessage,
     required this.loading,
@@ -23,6 +28,8 @@ class SearchState {
       district = '',
       guests = 1,
       includeFreeStay = false,
+      types = const <ListingType>[],
+      amenities = const <ListingAmenity>[],
       items = const <Listing>[],
       errorMessage = null,
       loading = false;
@@ -31,6 +38,8 @@ class SearchState {
   final String district;
   final int guests;
   final bool includeFreeStay;
+  final List<ListingType> types;
+  final List<ListingAmenity> amenities;
   final List<Listing> items;
   final String? errorMessage;
   final bool loading;
@@ -40,6 +49,8 @@ class SearchState {
     String? district,
     int? guests,
     bool? includeFreeStay,
+    List<ListingType>? types,
+    List<ListingAmenity>? amenities,
     List<Listing>? items,
     String? errorMessage,
     bool clearError = false,
@@ -50,6 +61,8 @@ class SearchState {
       district: district ?? this.district,
       guests: guests ?? this.guests,
       includeFreeStay: includeFreeStay ?? this.includeFreeStay,
+      types: types ?? this.types,
+      amenities: amenities ?? this.amenities,
       items: items ?? this.items,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       loading: loading ?? this.loading,
@@ -58,6 +71,9 @@ class SearchState {
 }
 
 final listingsRepositoryProvider = Provider<ListingsRepository>((ref) {
+  if (!RuntimeFlags.useFakeListings) {
+    return ApiListingsRepository(ref.watch(apiClientProvider));
+  }
   return FakeListingsRepository();
 });
 
@@ -79,6 +95,14 @@ class SearchController extends StateNotifier<SearchState> {
     state = state.copyWith(includeFreeStay: value, clearError: true);
   }
 
+  void setTypes(List<ListingType> types) {
+    state = state.copyWith(types: types, clearError: true);
+  }
+
+  void setAmenities(List<ListingAmenity> amenities) {
+    state = state.copyWith(amenities: amenities, clearError: true);
+  }
+
   Future<void> search() async {
     state = state.copyWith(loading: true, clearError: true);
 
@@ -91,6 +115,8 @@ class SearchController extends StateNotifier<SearchState> {
         district: state.district,
         guests: state.guests,
         includeFreeStay: state.includeFreeStay,
+        types: state.types,
+        amenities: state.amenities,
       );
 
       final items = await _read

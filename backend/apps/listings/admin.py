@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Listing, ListingImage
+from .models import AvailabilityDay, Listing, ListingImage
 
 
 class ListingImageInline(admin.TabularInline):
@@ -19,3 +19,10 @@ class ListingAdmin(admin.ModelAdmin):
 @admin.register(ListingImage)
 class ListingImageAdmin(admin.ModelAdmin):
     list_display = ('id', 'listing', 'created_at')
+
+
+@admin.register(AvailabilityDay)
+class AvailabilityDayAdmin(admin.ModelAdmin):
+    list_display = ('id', 'listing', 'date', 'is_available', 'price_override', 'updated_at')
+    list_filter = ('is_available', 'date')
+    search_fields = ('listing__title', 'listing__host__email')

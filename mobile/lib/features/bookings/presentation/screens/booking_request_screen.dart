@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/route_names.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../listings/application/search_controller.dart';
 import '../../../listings/domain/models/listing.dart';
@@ -19,9 +20,11 @@ class BookingRequestScreen extends ConsumerStatefulWidget {
 }
 
 class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
+  late final Future<_BookingInitData> _loadFuture;
+  late DateTime _displayMonth;
   DateTime? _checkIn;
   DateTime? _checkOut;
-  int _guests = 1;
+  final int _guests = 1;
   _CheckoutPaymentMethod _paymentMethod = _CheckoutPaymentMethod.click;
 
   static const _monthsLong = <String>[
@@ -39,26 +42,59 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
     'December',
   ];
 
-  Future<void> _pickCheckIn() async {
+  @override
+  void initState() {
+    super.initState();
     final now = DateTime.now();
+    _displayMonth = DateTime(now.year, now.month);
+    _loadFuture = _loadData();
+  }
+
+  Future<_BookingInitData> _loadData() async {
+    final repository = ref.read(listingsRepositoryProvider);
+    final listing = await repository.getById(widget.listingId);
+    final availability = await repository.getAvailability(widget.listingId);
+    final unavailableDates = availability
+        .where((day) => !day.isAvailable)
+        .map((day) => DateTime(day.date.year, day.date.month, day.date.day))
+        .toSet();
+    return _BookingInitData(listing: listing, unavailableDates: unavailableDates);
+  }
+
+  Future<void> _pickCheckIn(Set<DateTime> unavailableDates) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      firstDate: DateTime(now.year, now.month, now.day),
+      firstDate: today,
       lastDate: now.add(const Duration(days: 365)),
       initialDate: _checkIn ?? now,
+      selectableDayPredicate: (date) {
+        final day = DateTime(date.year, date.month, date.day);
+        if (day.isBefore(today)) {
+          return false;
+        }
+        return !unavailableDates.contains(day);
+      },
     );
 
     if (picked != null) {
       setState(() {
         _checkIn = DateTime(picked.year, picked.month, picked.day);
-        if (_checkOut != null && !_checkOut!.isAfter(_checkIn!)) {
+        if (_checkOut != null &&
+            (!_checkOut!.isAfter(_checkIn!) ||
+                _rangeHasUnavailable(
+                  _checkIn!,
+                  _checkOut!,
+                  unavailableDates,
+                ))) {
           _checkOut = null;
         }
       });
     }
   }
 
-  Future<void> _pickCheckOut() async {
+  Future<void> _pickCheckOut(Set<DateTime> unavailableDates) async {
     final start = _checkIn;
     if (start == null) {
       _show('Please choose check-in date first.');
@@ -70,6 +106,13 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
       firstDate: start.add(const Duration(days: 1)),
       lastDate: start.add(const Duration(days: 30)),
       initialDate: _checkOut ?? start.add(const Duration(days: 1)),
+      selectableDayPredicate: (date) {
+        final day = DateTime(date.year, date.month, date.day);
+        if (!day.isAfter(start)) {
+          return false;
+        }
+        return !_rangeHasUnavailable(start, day, unavailableDates);
+      },
     );
 
     if (picked != null) {
@@ -79,7 +122,7 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
     }
   }
 
-  Future<void> _submit(Listing listing) async {
+  Future<void> _submit(Listing listing, Set<DateTime> unavailableDates) async {
     final checkIn = _checkIn;
     final checkOut = _checkOut;
 
@@ -96,6 +139,11 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
 
     if (_guests > listing.maxGuests) {
       _show('This listing supports maximum ${listing.maxGuests} guests.');
+      return;
+    }
+
+    if (_rangeHasUnavailable(checkIn, checkOut, unavailableDates)) {
+      _show('Selected dates include unavailable days. Please choose another range.');
       return;
     }
 
@@ -151,14 +199,65 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
     return '${_monthsLong[date.month - 1]} ${date.year}';
   }
 
-  String _dayLabel(DateTime value) {
-    return '${value.day}'.padLeft(2, '0');
+  bool _rangeHasUnavailable(
+    DateTime checkIn,
+    DateTime checkOut,
+    Set<DateTime> unavailableDates,
+  ) {
+    for (
+      var day = DateTime(checkIn.year, checkIn.month, checkIn.day);
+      day.isBefore(checkOut);
+      day = day.add(const Duration(days: 1))
+    ) {
+      if (unavailableDates.contains(day)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _onCalendarDaySelected(DateTime date, Set<DateTime> unavailableDates) {
+    final day = DateTime(date.year, date.month, date.day);
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    if (day.isBefore(todayDate) || unavailableDates.contains(day)) {
+      return;
+    }
+
+    String? errorMessage;
+    setState(() {
+      if (_checkIn == null || (_checkIn != null && _checkOut != null)) {
+        _checkIn = day;
+        _checkOut = null;
+        return;
+      }
+
+      if (_checkOut == null) {
+        if (!day.isAfter(_checkIn!)) {
+          _checkIn = day;
+          return;
+        }
+        final nights = day.difference(_checkIn!).inDays;
+        if (nights < 1 || nights > 30) {
+          errorMessage = 'Booking length must be between 1 and 30 days.';
+          return;
+        }
+        if (_rangeHasUnavailable(_checkIn!, day, unavailableDates)) {
+          errorMessage = 'Selected range includes unavailable dates.';
+          return;
+        }
+        _checkOut = day;
+      }
+    });
+    if (errorMessage != null) {
+      _show(errorMessage!);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Listing?>(
-      future: ref.read(listingsRepositoryProvider).getById(widget.listingId),
+    return FutureBuilder<_BookingInitData>(
+      future: _loadFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
@@ -166,10 +265,19 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
           );
         }
 
-        final listing = snapshot.data;
+        final listing = snapshot.data?.listing;
+        final unavailableDates = snapshot.data?.unavailableDates ?? const <DateTime>{};
         if (listing == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Checkout')),
+            appBar: AppBar(
+              leading: IconButton(
+                onPressed: () => context.canPop()
+                    ? context.pop()
+                    : context.go(RouteNames.search),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              title: const Text('Checkout'),
+            ),
             body: const Center(child: Text('Listing not found.')),
           );
         }
@@ -200,7 +308,9 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
                 Row(
                   children: [
                     IconButton(
-                      onPressed: () => context.pop(),
+                      onPressed: () => context.canPop()
+                          ? context.pop()
+                          : context.go(RouteNames.search),
                       icon: const Icon(
                         Icons.arrow_back,
                         color: Color(0xFF0B1B55),
@@ -225,7 +335,7 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
                                 width: 32,
                                 height: 32,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, _, _) => const Icon(
                                   Icons.person,
                                   size: 16,
                                   color: Color(0xFF6D7280),
@@ -266,12 +376,47 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
                 ).animate().fadeIn(delay: 40.ms, duration: 220.ms),
                 const SizedBox(height: 10),
                 _CalendarPanel(
-                  monthLabel: _monthLabel(_checkIn ?? DateTime.now()),
+                  displayedMonth: _displayMonth,
+                  monthLabel: _monthLabel(_displayMonth),
                   checkIn: _checkIn,
                   checkOut: _checkOut,
-                  onPickCheckIn: loading ? null : _pickCheckIn,
-                  onPickCheckOut: loading ? null : _pickCheckOut,
+                  unavailableDates: unavailableDates,
+                  onPreviousMonth: loading
+                      ? null
+                      : () => setState(() {
+                          _displayMonth = DateTime(
+                            _displayMonth.year,
+                            _displayMonth.month - 1,
+                          );
+                        }),
+                  onNextMonth: loading
+                      ? null
+                      : () => setState(() {
+                          _displayMonth = DateTime(
+                            _displayMonth.year,
+                            _displayMonth.month + 1,
+                          );
+                        }),
+                  onSelectDate: loading
+                      ? null
+                      : (date) => _onCalendarDaySelected(date, unavailableDates),
+                  onPickCheckIn: loading
+                      ? null
+                      : () => _pickCheckIn(unavailableDates),
+                  onPickCheckOut: loading
+                      ? null
+                      : () => _pickCheckOut(unavailableDates),
                 ).animate().fadeIn(delay: 70.ms, duration: 240.ms),
+                const SizedBox(height: 8),
+                Text(
+                  unavailableDates.isEmpty
+                      ? 'All days are currently available.'
+                      : '${unavailableDates.length} blocked day(s) in calendar.',
+                  style: const TextStyle(
+                    color: Color(0xFF6B7183),
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'Payment Method',
@@ -374,7 +519,9 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   FilledButton(
-                    onPressed: loading ? null : () => _submit(listing),
+                    onPressed: loading
+                        ? null
+                        : () => _submit(listing, unavailableDates),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(60),
                       backgroundColor: const Color(0xFF082A7B),
@@ -407,6 +554,16 @@ class _BookingRequestScreenState extends ConsumerState<BookingRequestScreen> {
       },
     );
   }
+}
+
+class _BookingInitData {
+  const _BookingInitData({
+    required this.listing,
+    required this.unavailableDates,
+  });
+
+  final Listing? listing;
+  final Set<DateTime> unavailableDates;
 }
 
 enum _CheckoutPaymentMethod { click, payme }
@@ -459,16 +616,26 @@ class _StepProgressHeader extends StatelessWidget {
 
 class _CalendarPanel extends StatelessWidget {
   const _CalendarPanel({
+    required this.displayedMonth,
     required this.monthLabel,
     required this.checkIn,
     required this.checkOut,
+    required this.unavailableDates,
+    required this.onPreviousMonth,
+    required this.onNextMonth,
+    required this.onSelectDate,
     required this.onPickCheckIn,
     required this.onPickCheckOut,
   });
 
+  final DateTime displayedMonth;
   final String monthLabel;
   final DateTime? checkIn;
   final DateTime? checkOut;
+  final Set<DateTime> unavailableDates;
+  final VoidCallback? onPreviousMonth;
+  final VoidCallback? onNextMonth;
+  final ValueChanged<DateTime>? onSelectDate;
   final VoidCallback? onPickCheckIn;
   final VoidCallback? onPickCheckOut;
 
@@ -496,12 +663,12 @@ class _CalendarPanel extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
-                onPressed: onPickCheckIn,
+                onPressed: onPreviousMonth,
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.chevron_left),
               ),
               IconButton(
-                onPressed: onPickCheckOut,
+                onPressed: onNextMonth,
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.chevron_right),
               ),
@@ -521,48 +688,7 @@ class _CalendarPanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _CalendarNumberCell(label: '28', muted: true),
-              _CalendarNumberCell(label: '29', muted: true),
-              _CalendarNumberCell(label: '30', muted: true),
-              _CalendarNumberCell(label: '1'),
-              _CalendarNumberCell(label: '2'),
-              _CalendarNumberCell(label: '3'),
-              _CalendarNumberCell(label: '4'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _CalendarNumberCell(
-                label: '5',
-                selected: checkIn != null,
-                onTap: onPickCheckIn,
-              ),
-              _CalendarNumberCell(
-                label: '6',
-                inRange: checkIn != null && checkOut != null,
-              ),
-              _CalendarNumberCell(
-                label: '7',
-                inRange: checkIn != null && checkOut != null,
-              ),
-              _CalendarNumberCell(
-                label: '8',
-                inRange: checkIn != null && checkOut != null,
-              ),
-              _CalendarNumberCell(
-                label: '9',
-                selected: checkOut != null,
-                onTap: onPickCheckOut,
-              ),
-              const _CalendarNumberCell(label: '10'),
-              const _CalendarNumberCell(label: '11'),
-            ],
-          ),
+          ..._buildWeekRows(),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -593,6 +719,57 @@ class _CalendarPanel extends StatelessWidget {
       ),
     );
   }
+
+  List<Widget> _buildWeekRows() {
+    final firstOfMonth = DateTime(displayedMonth.year, displayedMonth.month, 1);
+    final firstWeekdayOffset = (firstOfMonth.weekday + 6) % 7;
+    final gridStart = firstOfMonth.subtract(Duration(days: firstWeekdayOffset));
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    final rows = <Widget>[];
+    for (var week = 0; week < 6; week++) {
+      rows.add(
+        Padding(
+          padding: EdgeInsets.only(bottom: week == 5 ? 0 : 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(7, (dayIndex) {
+              final date = gridStart.add(Duration(days: week * 7 + dayIndex));
+              final normalized = DateTime(date.year, date.month, date.day);
+              final inCurrentMonth = normalized.month == displayedMonth.month;
+              final isUnavailable = unavailableDates.contains(normalized);
+              final isPast = normalized.isBefore(todayDate);
+              final isCheckIn = checkIn != null && _sameDate(checkIn!, normalized);
+              final isCheckOut = checkOut != null && _sameDate(checkOut!, normalized);
+              final isSelected = isCheckIn || isCheckOut;
+              final inRange = checkIn != null &&
+                  checkOut != null &&
+                  normalized.isAfter(checkIn!) &&
+                  normalized.isBefore(checkOut!);
+              final blocked = isUnavailable || isPast || !inCurrentMonth;
+
+              return _CalendarNumberCell(
+                label: '${normalized.day}',
+                muted: !inCurrentMonth,
+                blocked: blocked,
+                selected: isSelected,
+                inRange: inRange,
+                onTap: blocked || onSelectDate == null
+                    ? null
+                    : () => onSelectDate!(normalized),
+              );
+            }),
+          ),
+        ),
+      );
+    }
+    return rows;
+  }
+
+  bool _sameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
 }
 
 class _WeekText extends StatelessWidget {
@@ -619,6 +796,7 @@ class _CalendarNumberCell extends StatelessWidget {
     this.selected = false,
     this.inRange = false,
     this.muted = false,
+    this.blocked = false,
     this.onTap,
   });
 
@@ -626,6 +804,7 @@ class _CalendarNumberCell extends StatelessWidget {
   final bool selected;
   final bool inRange;
   final bool muted;
+  final bool blocked;
   final VoidCallback? onTap;
 
   @override
@@ -650,7 +829,9 @@ class _CalendarNumberCell extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: muted
+            color: blocked
+                ? const Color(0xFFCACED8)
+                : muted
                 ? const Color(0xFFBDC1CB)
                 : selected
                 ? Colors.white
@@ -852,7 +1033,7 @@ class _ReceiptCard extends StatelessWidget {
                 child: Image.network(
                   listing.imageUrls.first,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     color: const Color(0xFFE9ECF2),
                     alignment: Alignment.center,
                     child: const Icon(
