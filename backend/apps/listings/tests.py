@@ -2,7 +2,6 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.listings.models import AvailabilityDay
-from apps.notifications.models import Notification
 from apps.users.models import User
 
 
@@ -116,33 +115,11 @@ class ListingApiTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         approve_response = self.client.post(f'/api/listings/{listing_id}/approve', {}, format='json')
         self.assertEqual(approve_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            Notification.objects.filter(
-                recipient=self.host,
-                type='listing_approved',
-            ).count(),
-            1,
-        )
 
         self.client.force_authenticate(user=None)
         public_after_approve = self.client.get('/api/listings/')
         self.assertEqual(public_after_approve.status_code, status.HTTP_200_OK)
         self.assertEqual(public_after_approve.data['count'], 1)
-
-        self.client.force_authenticate(user=self.admin)
-        reject_response = self.client.post(
-            f'/api/listings/{listing_id}/reject',
-            {'note': 'Missing details'},
-            format='json',
-        )
-        self.assertEqual(reject_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            Notification.objects.filter(
-                recipient=self.host,
-                type='listing_rejected',
-            ).count(),
-            1,
-        )
 
     def test_updating_listing_sets_pending_moderation(self):
         self.client.force_authenticate(user=self.host)

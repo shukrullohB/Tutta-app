@@ -34,7 +34,6 @@ INSTALLED_APPS = [
     'apps.reviews',
     'apps.chat',
     'apps.payments',
-    'apps.notifications',
 ]
 
 MIDDLEWARE = [
@@ -139,8 +138,6 @@ REST_FRAMEWORK = {
         'chat_messages': os.getenv('THROTTLE_CHAT_MESSAGES', '600/hour'),
         'payments_intents': os.getenv('THROTTLE_PAYMENTS_INTENTS', '120/hour'),
         'payments_webhook': os.getenv('THROTTLE_PAYMENTS_WEBHOOK', '300/hour'),
-        'notifications_list': os.getenv('THROTTLE_NOTIFICATIONS_LIST', '300/hour'),
-        'notifications_action': os.getenv('THROTTLE_NOTIFICATIONS_ACTION', '300/hour'),
     },
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultPageNumberPagination',
     'PAGE_SIZE': int(os.getenv('API_PAGE_SIZE', '20')),

@@ -7,7 +7,6 @@ from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 from rest_framework import generics, permissions, response, status, throttling, views
 
-from apps.notifications.services import create_notification
 from .models import Booking
 from .serializers import BookingCreateSerializer, BookingSerializer
 
@@ -44,14 +43,7 @@ class BookingListCreateView(generics.ListCreateAPIView):
         if self.request.user.role != 'guest':
             # Keep initial booking flow strict: only guests can create reservations.
             raise PermissionDenied('Only guest users can create bookings.')
-        booking = serializer.save()
-        create_notification(
-            recipient=booking.listing.host,
-            notification_type='booking_request',
-            title='New booking request',
-            body=f'You have a new booking request for "{booking.listing.title}".',
-            payload={'bookingId': booking.id, 'listingId': booking.listing_id},
-        )
+        serializer.save()
 
 
 class BookingConfirmView(views.APIView):
@@ -97,13 +89,6 @@ class BookingConfirmView(views.APIView):
 
             booking.status = Booking.Status.CONFIRMED
             booking.save(update_fields=['status'])
-            create_notification(
-                recipient=booking.guest,
-                notification_type='booking_confirmed',
-                title='Booking confirmed',
-                body=f'Your booking for "{booking.listing.title}" was confirmed.',
-                payload={'bookingId': booking.id, 'listingId': booking.listing_id},
-            )
         return response.Response({'booking_id': booking.id, 'status': booking.status, 'detail': 'Booking confirmed.'}, status=status.HTTP_200_OK)
 
 
@@ -145,14 +130,6 @@ class BookingCancelView(views.APIView):
 
         booking.status = Booking.Status.CANCELLED
         booking.save(update_fields=['status'])
-        recipient = booking.listing.host if is_guest else booking.guest
-        create_notification(
-            recipient=recipient,
-            notification_type='booking_cancelled',
-            title='Booking cancelled',
-            body=f'Booking for "{booking.listing.title}" was cancelled.',
-            payload={'bookingId': booking.id, 'listingId': booking.listing_id},
-        )
         return response.Response({'booking_id': booking.id, 'status': booking.status, 'detail': 'Booking cancelled.'}, status=status.HTTP_200_OK)
 
 
@@ -193,12 +170,4 @@ class BookingCompleteView(views.APIView):
 
         booking.status = Booking.Status.COMPLETED
         booking.save(update_fields=['status'])
-        recipient = booking.listing.host if is_guest else booking.guest
-        create_notification(
-            recipient=recipient,
-            notification_type='booking_completed',
-            title='Booking completed',
-            body=f'Booking for "{booking.listing.title}" has been completed.',
-            payload={'bookingId': booking.id, 'listingId': booking.listing_id},
-        )
         return response.Response({'booking_id': booking.id, 'status': booking.status, 'detail': 'Booking completed.'}, status=status.HTTP_200_OK)

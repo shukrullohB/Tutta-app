@@ -6,7 +6,6 @@ from django.utils import timezone
 
 from apps.listings.models import AvailabilityDay
 from apps.listings.models import Listing
-from apps.notifications.models import Notification
 from apps.users.models import User
 from .models import Booking
 
@@ -49,24 +48,10 @@ class BookingApiTests(APITestCase):
         create_response = self.client.post('/api/bookings/', create_payload, format='json')
         self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
         booking_id = create_response.data['id']
-        self.assertEqual(
-            Notification.objects.filter(
-                recipient=self.host,
-                type='booking_request',
-            ).count(),
-            1,
-        )
 
         self.client.force_authenticate(user=self.host)
         confirm_response = self.client.post(f'/api/bookings/{booking_id}/confirm', {}, format='json')
         self.assertEqual(confirm_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            Notification.objects.filter(
-                recipient=self.guest,
-                type='booking_confirmed',
-            ).count(),
-            1,
-        )
 
         booking = Booking.objects.get(id=booking_id)
         self.assertEqual(booking.status, Booking.Status.CONFIRMED)

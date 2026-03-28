@@ -3,7 +3,6 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import generics, permissions, response, status, throttling, views
 from rest_framework import serializers
 
-from apps.notifications.services import create_notification
 from .models import AvailabilityDay, Listing
 from .permissions import IsHostUser, IsListingOwner
 from .serializers import AvailabilityDaySerializer, ListingCreateSerializer, ListingSerializer
@@ -173,13 +172,6 @@ class ListingApproveView(views.APIView):
         listing.moderation_status = Listing.ModerationStatus.APPROVED
         listing.moderation_note = ''
         listing.save(update_fields=['moderation_status', 'moderation_note', 'updated_at'])
-        create_notification(
-            recipient=listing.host,
-            notification_type='listing_approved',
-            title='Listing approved',
-            body=f'Your listing "{listing.title}" is approved and visible.',
-            payload={'listingId': listing.id},
-        )
         return response.Response({'detail': 'Listing approved.'}, status=status.HTTP_200_OK)
 
 
@@ -201,13 +193,6 @@ class ListingRejectView(views.APIView):
         listing.is_active = False
         listing.moderation_note = (request.data.get('note') or '').strip()
         listing.save(update_fields=['moderation_status', 'is_active', 'moderation_note', 'updated_at'])
-        create_notification(
-            recipient=listing.host,
-            notification_type='listing_rejected',
-            title='Listing rejected',
-            body=f'Your listing "{listing.title}" needs updates before publishing.',
-            payload={'listingId': listing.id, 'note': listing.moderation_note},
-        )
         return response.Response({'detail': 'Listing rejected.'}, status=status.HTTP_200_OK)
 
 
