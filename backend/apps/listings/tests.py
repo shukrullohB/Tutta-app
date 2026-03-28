@@ -34,6 +34,7 @@ class ListingApiTests(APITestCase):
         payload = {
             'title': 'Cozy Apartment',
             'description': 'Central location and fast wifi',
+            'location': 'Tashkent, Yunusabad',
             'city': 'Tashkent',
             'district': 'Yunusabad',
             'listing_type': 'home',
@@ -55,6 +56,7 @@ class ListingApiTests(APITestCase):
         payload = {
             'title': 'Language exchange room',
             'description': 'Free stay for cultural exchange',
+            'location': 'Samarkand, Registan',
             'city': 'Samarkand',
             'district': 'Registan',
             'listing_type': 'free_stay',
@@ -81,6 +83,7 @@ class ListingApiTests(APITestCase):
             {
                 'title': 'Pending listing',
                 'description': 'Needs approval',
+                'location': 'Tashkent, Mirzo Ulugbek',
                 'city': 'Tashkent',
                 'district': 'Mirzo Ulugbek',
                 'listing_type': 'room',
@@ -128,6 +131,7 @@ class ListingApiTests(APITestCase):
             {
                 'title': 'Editable listing',
                 'description': 'Before edit',
+                'location': 'Tashkent, Yakkasaray',
                 'city': 'Tashkent',
                 'district': 'Yakkasaray',
                 'listing_type': 'home',
@@ -174,6 +178,7 @@ class ListingApiTests(APITestCase):
             {
                 'title': 'Availability listing',
                 'description': 'Calendar test',
+                'location': 'Tashkent, Yunusabad',
                 'city': 'Tashkent',
                 'district': 'Yunusabad',
                 'listing_type': 'room',
