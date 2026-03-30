@@ -14,6 +14,22 @@ DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',') if host.strip()]
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173').split(',') if origin.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173').split(',') if origin.strip()]
+CORS_ALLOWED_ORIGIN_REGEXES = []
+
+if os.getenv('CORS_ALLOW_LOCALHOST_ANY_PORT', 'True').lower() == 'true':
+    CORS_ALLOWED_ORIGIN_REGEXES += [
+        r'^http://localhost:\d+$',
+        r'^http://127\.0\.0\.1:\d+$',
+    ]
+
+GOOGLE_OAUTH_CLIENT_IDS = [
+    value.strip()
+    for value in os.getenv(
+        'GOOGLE_OAUTH_CLIENT_IDS',
+        os.getenv('GOOGLE_WEB_CLIENT_ID', ''),
+    ).split(',')
+    if value.strip()
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -123,6 +139,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'auth_register': os.getenv('THROTTLE_AUTH_REGISTER', '10/hour'),
         'auth_login': os.getenv('THROTTLE_AUTH_LOGIN', '20/hour'),
+        'auth_google': os.getenv('THROTTLE_AUTH_GOOGLE', '20/hour'),
         'auth_refresh': os.getenv('THROTTLE_AUTH_REFRESH', '60/hour'),
         'auth_logout': os.getenv('THROTTLE_AUTH_LOGOUT', '60/hour'),
         'users_me': os.getenv('THROTTLE_USERS_ME', '120/hour'),

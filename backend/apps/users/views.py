@@ -3,7 +3,13 @@ from rest_framework import serializers
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .serializers import LogoutSerializer, RegisterSerializer, TuttaTokenObtainPairSerializer, UserSerializer
+from .serializers import (
+    GoogleLoginSerializer,
+    LogoutSerializer,
+    RegisterSerializer,
+    TuttaTokenObtainPairSerializer,
+    UserSerializer,
+)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -45,6 +51,38 @@ class LogoutView(views.APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return response.Response({'detail': 'Successfully logged out.'}, status=status.HTTP_200_OK)
+
+
+class GoogleLoginView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = 'auth_google'
+
+    @extend_schema(
+        request=GoogleLoginSerializer,
+        responses={
+            200: inline_serializer(
+                name='GoogleLoginResponse',
+                fields={
+                    'access': serializers.CharField(),
+                    'refresh': serializers.CharField(),
+                    'user': UserSerializer(),
+                },
+            ),
+        },
+    )
+    def post(self, request):
+        serializer = GoogleLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.save()
+        return response.Response(
+            {
+                'access': data['access'],
+                'refresh': data['refresh'],
+                'user': UserSerializer(data['user']).data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class MeView(generics.RetrieveAPIView):
