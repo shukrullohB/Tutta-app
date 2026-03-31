@@ -4,6 +4,33 @@ info:
   version: 1.0.0
   description: API documentation for Tutta rental marketplace backend.
 paths:
+  /api/auth/google:
+    post:
+      operationId: api_auth_google_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLogin'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleLogin'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleLogin'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleLoginResponse'
+          description: ''
   /api/auth/login:
     post:
       operationId: api_auth_login_create
@@ -937,6 +964,33 @@ components:
         * `pending` - Pending
         * `confirmed` - Confirmed
         * `cancelled` - Cancelled
+    GoogleLogin:
+      type: object
+      properties:
+        id_token:
+          type: string
+        access_token:
+          type: string
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+      required:
+      - id_token
+    GoogleLoginResponse:
+      type: object
+      properties:
+        access:
+          type: string
+        refresh:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+      - access
+      - refresh
+      - user
     HealthCheckResponse:
       type: object
       properties:

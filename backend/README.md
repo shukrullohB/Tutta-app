@@ -3,22 +3,26 @@
 ## 1) Birinchi ishga tushirish
 
 ### 1.1 Virtual environment (tavsiya)
+
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 ```
 
 ### 1.2 Dependency o'rnatish
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 1.3 `.env` tayyorlash
+
 ```bash
 copy .env.example .env
 ```
 
 `.env` ichida Postgres credentiallarni o'zingizdagi real qiymatga almashtiring:
+
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -28,6 +32,7 @@ copy .env.example .env
 - `CSRF_TRUSTED_ORIGINS`
 
 ### 1.4 Migratsiya va server
+
 ```bash
 python manage.py migrate
 python manage.py runserver
@@ -39,6 +44,7 @@ Agar `password authentication failed` chiqsa, `.env`dagi `POSTGRES_USER/POSTGRES
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/google`
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`
 - `GET /api/users/me`
@@ -101,6 +107,7 @@ API xatolari bir xil formatda qaytadi:
 Asosiy branch: `feature/backend`
 
 Har modul alohida branch:
+
 - `feature/auth-api`
 - `feature/listing-api`
 - `feature/booking-system`
@@ -108,6 +115,7 @@ Har modul alohida branch:
 - `feature/payment-integration`
 
 Ish tartibi:
+
 ```bash
 git checkout feature/backend
 git pull origin feature/backend
@@ -117,11 +125,14 @@ git add .
 git commit -m "feat(auth): ..."
 git push -u origin feature/auth-api
 ```
+
 Keyin PR: `feature/auth-api` -> `feature/backend`.
 
 ## 4) Eslatma
 
 - Local frontend/mobile integratsiya uchun `.env`da `CORS_ALLOWED_ORIGINS` va `CSRF_TRUSTED_ORIGINS` ni moslang.
+- Flutter web (default 6060) ishlatsa, `.env`da `http://localhost:6060` va `http://127.0.0.1:6060` bo‘lishi kerak.
+- Mobile API base URL: `http://<backend-host>:<port>/api`
 - Productionda `DEBUG=False` va `SECURE_SSL_REDIRECT=True` bo'lishi kerak.
 - Productionda security header envlari ham to'g'ri bo'lishi kerak:
   - `SECURE_HSTS_SECONDS`
