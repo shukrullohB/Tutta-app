@@ -24,4 +24,10 @@ abstract interface class AuthRepository {
   Future<Map<String, String>> refresh({required String refreshToken});
 
   Future<void> signOut({required String refreshToken});
+
+  Future<AuthUser> updateProfile({
+    required String firstName,
+    required String lastName,
+    String? phoneNumber,
+  });
 }

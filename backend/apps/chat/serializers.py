@@ -123,3 +123,15 @@ class MessageCreateSerializer(serializers.ModelSerializer):
         if not value.strip():
             raise serializers.ValidationError('Message content cannot be empty.')
         return value.strip()
+
+
+class MessageUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ('id', 'content', 'created_at')
+        read_only_fields = ('id', 'created_at')
+
+    def validate_content(self, value):
+        if not value.strip():
+            raise serializers.ValidationError('Message content cannot be empty.')
+        return value.strip()

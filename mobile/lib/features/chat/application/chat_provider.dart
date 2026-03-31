@@ -80,6 +80,23 @@ class ChatActions {
     _ref.invalidate(chatThreadsProvider);
   }
 
+  Future<void> updateMessage({
+    required String threadId,
+    required String messageId,
+    required String content,
+  }) async {
+    final text = content.trim();
+    if (text.isEmpty) {
+      return;
+    }
+
+    await _ref
+        .read(chatRepositoryProvider)
+        .updateMessage(threadId: threadId, messageId: messageId, content: text);
+    _ref.invalidate(chatMessagesProvider(threadId));
+    _ref.invalidate(chatThreadsProvider);
+  }
+
   Future<void> deleteMessage({
     required String threadId,
     required String messageId,

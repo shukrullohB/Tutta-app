@@ -37,13 +37,13 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           title: _shellText(
             context,
             en: 'Role is not selected',
-            ru: 'Роль не выбрана',
+            ru: 'Р РѕР»СЊ РЅРµ РІС‹Р±СЂР°РЅР°',
             uz: 'Rol tanlanmagan',
           ),
           subtitle: _shellText(
             context,
             en: 'Please choose renter or host mode.',
-            ru: 'Пожалуйста, выберите режим арендатора или хозяина.',
+            ru: 'РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РІС‹Р±РµСЂРёС‚Рµ СЂРµР¶РёРј Р°СЂРµРЅРґР°С‚РѕСЂР° РёР»Рё С…РѕР·СЏРёРЅР°.',
             uz: 'Iltimos, mehmon yoki host rejimini tanlang.',
           ),
         ),
@@ -64,13 +64,13 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
               ? _shellText(
                   context,
                   en: 'Tutta Renter',
-                  ru: 'Tutta Арендатор',
+                  ru: 'Tutta РђСЂРµРЅРґР°С‚РѕСЂ',
                   uz: 'Tutta Mehmon',
                 )
               : _shellText(
                   context,
                   en: 'Tutta Host',
-                  ru: 'Tutta Хозяин',
+                  ru: 'Tutta РҐРѕР·СЏРёРЅ',
                   uz: 'Tutta Host',
                 ),
         ),
@@ -126,13 +126,13 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           title: _shellText(
             context,
             en: 'Host Dashboard',
-            ru: 'Панель хоста',
+            ru: 'РџР°РЅРµР»СЊ С…РѕСЃС‚Р°',
             uz: 'Host paneli',
           ),
           subtitle: _shellText(
             context,
             en: 'Manage listings, requests, and occupancy.',
-            ru: 'Управляйте объявлениями, заявками и занятостью.',
+            ru: 'РЈРїСЂР°РІР»СЏР№С‚Рµ РѕР±СЉСЏРІР»РµРЅРёСЏРјРё, Р·Р°СЏРІРєР°РјРё Рё Р·Р°РЅСЏС‚РѕСЃС‚СЊСЋ.',
             uz: 'E\'lonlar, so\'rovlar va bandlikni boshqaring.',
           ),
         ),
@@ -140,13 +140,13 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           title: _shellText(
             context,
             en: 'My Listings',
-            ru: 'Мои объявления',
+            ru: 'РњРѕРё РѕР±СЉСЏРІР»РµРЅРёСЏ',
             uz: 'Mening e\'lonlarim',
           ),
           subtitle: _shellText(
             context,
             en: 'Create and update your listings in one place.',
-            ru: 'Создавайте и обновляйте объявления в одном месте.',
+            ru: 'РЎРѕР·РґР°РІР°Р№С‚Рµ Рё РѕР±РЅРѕРІР»СЏР№С‚Рµ РѕР±СЉСЏРІР»РµРЅРёСЏ РІ РѕРґРЅРѕРј РјРµСЃС‚Рµ.',
             uz: 'E\'lonlarni bir joyda yarating va yangilang.',
           ),
         ),
@@ -154,22 +154,27 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           title: _shellText(
             context,
             en: 'Requests',
-            ru: 'Заявки',
+            ru: 'Р—Р°СЏРІРєРё',
             uz: 'So\'rovlar',
           ),
           subtitle: _shellText(
             context,
             en: 'Approve or decline booking requests in one place.',
-            ru: 'Принимайте или отклоняйте заявки в одном месте.',
+            ru: 'РџСЂРёРЅРёРјР°Р№С‚Рµ РёР»Рё РѕС‚РєР»РѕРЅСЏР№С‚Рµ Р·Р°СЏРІРєРё РІ РѕРґРЅРѕРј РјРµСЃС‚Рµ.',
             uz: 'Bron so\'rovlarini shu yerda tasdiqlang yoki rad eting.',
           ),
         ),
         _ChatEntryTab(
-          title: _shellText(context, en: 'Chats', ru: 'Чаты', uz: 'Chatlar'),
+          title: _shellText(
+            context,
+            en: 'Chats',
+            ru: 'Р§Р°С‚С‹',
+            uz: 'Chatlar',
+          ),
           subtitle: _shellText(
             context,
             en: 'Talk to your guests in real time.',
-            ru: 'Общайтесь с гостями в реальном времени.',
+            ru: 'РћР±С‰Р°Р№С‚РµСЃСЊ СЃ РіРѕСЃС‚СЏРјРё РІ СЂРµР°Р»СЊРЅРѕРј РІСЂРµРјРµРЅРё.',
             uz: 'Mehmonlar bilan real vaqtda yozishing.',
           ),
         ),
@@ -184,7 +189,7 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
         subtitle: _shellText(
           context,
           en: 'Saved listings and host profiles.',
-          ru: 'Сохраненные объявления и профили хозяев.',
+          ru: 'РЎРѕС…СЂР°РЅРµРЅРЅС‹Рµ РѕР±СЉСЏРІР»РµРЅРёСЏ Рё РїСЂРѕС„РёР»Рё С…РѕР·СЏРµРІ.',
           uz: 'Saqlangan e\'lonlar va host profillari.',
         ),
       ),
@@ -192,22 +197,22 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
         title: _shellText(
           context,
           en: 'Bookings',
-          ru: 'Бронирования',
+          ru: 'Р‘СЂРѕРЅРёСЂРѕРІР°РЅРёСЏ',
           uz: 'Bronlar',
         ),
         subtitle: _shellText(
           context,
           en: 'Track requests and upcoming stays in Uzbekistan.',
-          ru: 'Следите за заявками и предстоящими поездками по Узбекистану.',
+          ru: 'РЎР»РµРґРёС‚Рµ Р·Р° Р·Р°СЏРІРєР°РјРё Рё РїСЂРµРґСЃС‚РѕСЏС‰РёРјРё РїРѕРµР·РґРєР°РјРё РїРѕ РЈР·Р±РµРєРёСЃС‚Р°РЅСѓ.',
           uz: 'So\'rovlar va yaqin safarlarni shu yerda kuzating.',
         ),
       ),
       _ChatEntryTab(
-        title: _shellText(context, en: 'Chats', ru: 'Чаты', uz: 'Chatlar'),
+        title: _shellText(context, en: 'Chats', ru: 'Р§Р°С‚С‹', uz: 'Chatlar'),
         subtitle: _shellText(
           context,
           en: 'Talk to hosts before booking.',
-          ru: 'Общайтесь с хозяевами до бронирования.',
+          ru: 'РћР±С‰Р°Р№С‚РµСЃСЊ СЃ С…РѕР·СЏРµРІР°РјРё РґРѕ Р±СЂРѕРЅРёСЂРѕРІР°РЅРёСЏ.',
           uz: 'Bron qilishdan oldin hostlar bilan yozishing.',
         ),
       ),
@@ -226,7 +231,7 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           label: _shellText(
             context,
             en: 'Dashboard',
-            ru: 'Панель',
+            ru: 'РџР°РЅРµР»СЊ',
             uz: 'Panel',
           ),
         ),
@@ -235,7 +240,7 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           label: _shellText(
             context,
             en: 'Listings',
-            ru: 'Объявления',
+            ru: 'РћР±СЉСЏРІР»РµРЅРёСЏ',
             uz: 'E\'lonlar',
           ),
         ),
@@ -244,20 +249,25 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
           label: _shellText(
             context,
             en: 'Requests',
-            ru: 'Заявки',
+            ru: 'Р—Р°СЏРІРєРё',
             uz: 'So\'rovlar',
           ),
         ),
         NavigationDestination(
           icon: Icon(Icons.chat_bubble_outline),
-          label: _shellText(context, en: 'Chats', ru: 'Чаты', uz: 'Chatlar'),
+          label: _shellText(
+            context,
+            en: 'Chats',
+            ru: 'Р§Р°С‚С‹',
+            uz: 'Chatlar',
+          ),
         ),
         NavigationDestination(
           icon: Icon(Icons.person_outline),
           label: _shellText(
             context,
             en: 'Profile',
-            ru: 'Профиль',
+            ru: 'РџСЂРѕС„РёР»СЊ',
             uz: 'Profil',
           ),
         ),
@@ -267,7 +277,12 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
     return [
       NavigationDestination(
         icon: const Icon(Icons.travel_explore),
-        label: _shellText(context, en: 'Explore', ru: 'Поиск', uz: 'Qidiruv'),
+        label: _shellText(
+          context,
+          en: 'Explore',
+          ru: 'РџРѕРёСЃРє',
+          uz: 'Qidiruv',
+        ),
       ),
       NavigationDestination(
         icon: const Icon(Icons.favorite_border),
@@ -275,15 +290,25 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
       ),
       NavigationDestination(
         icon: const Icon(Icons.calendar_month_outlined),
-        label: _shellText(context, en: 'Bookings', ru: 'Брони', uz: 'Bronlar'),
+        label: _shellText(
+          context,
+          en: 'Bookings',
+          ru: 'Р‘СЂРѕРЅРё',
+          uz: 'Bronlar',
+        ),
       ),
       NavigationDestination(
         icon: const Icon(Icons.chat_bubble_outline),
-        label: _shellText(context, en: 'Chats', ru: 'Чаты', uz: 'Chatlar'),
+        label: _shellText(context, en: 'Chats', ru: 'Р§Р°С‚С‹', uz: 'Chatlar'),
       ),
       NavigationDestination(
         icon: const Icon(Icons.person_outline),
-        label: _shellText(context, en: 'Profile', ru: 'Профиль', uz: 'Profil'),
+        label: _shellText(
+          context,
+          en: 'Profile',
+          ru: 'РџСЂРѕС„РёР»СЊ',
+          uz: 'Profil',
+        ),
       ),
     ];
   }
@@ -384,7 +409,7 @@ class _RenterHomeTabState extends ConsumerState<_RenterHomeTab> {
                   _shellText(
                     context,
                     en: 'Search stays',
-                    ru: 'Искать жилье',
+                    ru: 'РСЃРєР°С‚СЊ Р¶РёР»СЊРµ',
                     uz: 'Uy qidirish',
                   ),
                 ),
@@ -720,7 +745,7 @@ class _RenterHomeTabState extends ConsumerState<_RenterHomeTab> {
           const _NearbyCard(
             listingId: 'l3',
             title: 'Samarkand Courtyard Flat',
-            subtitle: 'Samarkand • 3 nights',
+            subtitle: 'Samarkand вЂў 3 nights',
             price: '850 000 UZS / night',
             rating: '4.95',
             imageAssetPath: 'assets/images/home2.png',
@@ -730,7 +755,7 @@ class _RenterHomeTabState extends ConsumerState<_RenterHomeTab> {
           const _NearbyCard(
             listingId: 'l2',
             title: 'Bukhara Old City Studio',
-            subtitle: 'Bukhara • 2 nights',
+            subtitle: 'Bukhara вЂў 2 nights',
             price: '620 000 UZS / night',
             rating: '4.78',
             imageAssetPath: 'assets/images/home4.png',
@@ -740,7 +765,7 @@ class _RenterHomeTabState extends ConsumerState<_RenterHomeTab> {
           const _NearbyCard(
             listingId: 'l1',
             title: 'Cozy Living Room Stay',
-            subtitle: 'Tashkent • 2 nights',
+            subtitle: 'Tashkent вЂў 2 nights',
             price: '740 000 UZS / night',
             rating: '4.88',
             imageAssetPath: 'assets/images/home3.png',
@@ -1349,19 +1374,10 @@ class _ChatPreview extends ConsumerWidget {
             final thread = threads[index];
             return _PreviewRow(
               icon: Icons.chat_bubble_outline,
-              title: _threadTitle(
-                context,
-                thread,
-                ref.watch(appSessionControllerProvider).activeRole,
-              ),
+              title: thread.counterpartName,
               subtitle: thread.lastMessage?.isNotEmpty == true
-                  ? thread.lastMessage!
-                  : _shellText(
-                      context,
-                      en: 'Tap to open conversation',
-                      ru: 'Нажмите, чтобы открыть диалог',
-                      uz: 'Suhbatni ochish uchun bosing',
-                    ),
+                  ? '${thread.listingTitle} · ${thread.lastMessage!}'
+                  : thread.listingTitle,
               trailing: thread.unreadCount > 0 ? '${thread.unreadCount}' : null,
               onTap: () => context.go(RouteNames.chatList),
             );
@@ -1439,13 +1455,13 @@ class _ProfileHomeTab extends ConsumerWidget {
                             ? _shellText(
                                 context,
                                 en: 'Host profile, support, and occupancy tools.',
-                                ru: 'Профиль хоста, поддержка и инструменты занятости.',
+                                ru: 'РџСЂРѕС„РёР»СЊ С…РѕСЃС‚Р°, РїРѕРґРґРµСЂР¶РєР° Рё РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ Р·Р°РЅСЏС‚РѕСЃС‚Рё.',
                                 uz: 'Host profili, yordam va bandlik vositalari.',
                               )
                             : _shellText(
                                 context,
                                 en: 'Trips, premium access, and account preferences.',
-                                ru: 'Поездки, premium-доступ и настройки аккаунта.',
+                                ru: 'РџРѕРµР·РґРєРё, premium-РґРѕСЃС‚СѓРї Рё РЅР°СЃС‚СЂРѕР№РєРё Р°РєРєР°СѓРЅС‚Р°.',
                                 uz: 'Safarlar, premium kirish va akkaunt sozlamalari.',
                               ),
                         style: const TextStyle(
@@ -1453,7 +1469,32 @@ class _ProfileHomeTab extends ConsumerWidget {
                           height: 1.35,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        auth?.email ?? 'concierge@tutta.com',
+                        style: const TextStyle(
+                          color: Color(0xCCFFFFFF),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0x2DFFFFFF),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => _showEditProfileSheet(context, ref, auth),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(
+                    _shellText(
+                      context,
+                      en: 'Edit',
+                      ru: 'Изменить',
+                      uz: 'Tahrirlash',
+                    ),
                   ),
                 ),
               ],
@@ -1471,13 +1512,13 @@ class _ProfileHomeTab extends ConsumerWidget {
             title: _shellText(
               context,
               en: 'Settings',
-              ru: 'Настройки',
+              ru: 'РќР°СЃС‚СЂРѕР№РєРё',
               uz: 'Sozlamalar',
             ),
             subtitle: _shellText(
               context,
               en: 'Language, privacy, and app preferences',
-              ru: 'Язык, приватность и настройки приложения',
+              ru: 'РЇР·С‹Рє, РїСЂРёРІР°С‚РЅРѕСЃС‚СЊ Рё РЅР°СЃС‚СЂРѕР№РєРё РїСЂРёР»РѕР¶РµРЅРёСЏ',
               uz: 'Til, maxfiylik va ilova sozlamalari',
             ),
             accent: const Color(0xFFF4F0E7),
@@ -1490,13 +1531,13 @@ class _ProfileHomeTab extends ConsumerWidget {
             title: _shellText(
               context,
               en: 'Premium',
-              ru: 'Премиум',
+              ru: 'РџСЂРµРјРёСѓРј',
               uz: 'Premium',
             ),
             subtitle: _shellText(
               context,
               en: 'Manage Free Stay access and premium benefits',
-              ru: 'Управление доступом Free Stay и premium-возможностями',
+              ru: 'РЈРїСЂР°РІР»РµРЅРёРµ РґРѕСЃС‚СѓРїРѕРј Free Stay Рё premium-РІРѕР·РјРѕР¶РЅРѕСЃС‚СЏРјРё',
               uz: 'Free Stay kirishi va premium imkoniyatlarini boshqarish',
             ),
             accent: const Color(0xFFF7E7C1),
@@ -1509,13 +1550,13 @@ class _ProfileHomeTab extends ConsumerWidget {
             title: _shellText(
               context,
               en: 'Notifications',
-              ru: 'Уведомления',
+              ru: 'РЈРІРµРґРѕРјР»РµРЅРёСЏ',
               uz: 'Bildirishnomalar',
             ),
             subtitle: _shellText(
               context,
               en: 'Booking updates and activity alerts',
-              ru: 'Обновления бронирований и важные уведомления',
+              ru: 'РћР±РЅРѕРІР»РµРЅРёСЏ Р±СЂРѕРЅРёСЂРѕРІР°РЅРёР№ Рё РІР°Р¶РЅС‹Рµ СѓРІРµРґРѕРјР»РµРЅРёСЏ',
               uz: 'Bron yangilanishlari va muhim bildirishnomalar',
             ),
             accent: const Color(0xFFF4F0E7),
@@ -1528,13 +1569,13 @@ class _ProfileHomeTab extends ConsumerWidget {
             title: _shellText(
               context,
               en: 'Support',
-              ru: 'Поддержка',
+              ru: 'РџРѕРґРґРµСЂР¶РєР°',
               uz: 'Yordam',
             ),
             subtitle: _shellText(
               context,
               en: 'Help center and contact options',
-              ru: 'Центр помощи и способы связи',
+              ru: 'Р¦РµРЅС‚СЂ РїРѕРјРѕС‰Рё Рё СЃРїРѕСЃРѕР±С‹ СЃРІСЏР·Рё',
               uz: 'Yordam markazi va aloqa usullari',
             ),
             accent: const Color(0xFFF4F0E7),
@@ -1548,19 +1589,19 @@ class _ProfileHomeTab extends ConsumerWidget {
                 ? _shellText(
                     context,
                     en: 'Switch to renter mode',
-                    ru: 'Переключиться в режим арендатора',
+                    ru: 'РџРµСЂРµРєР»СЋС‡РёС‚СЊСЃСЏ РІ СЂРµР¶РёРј Р°СЂРµРЅРґР°С‚РѕСЂР°',
                     uz: 'Mehmon rejimiga o\'tish',
                   )
                 : _shellText(
                     context,
                     en: 'Switch to host mode',
-                    ru: 'Переключиться в режим хоста',
+                    ru: 'РџРµСЂРµРєР»СЋС‡РёС‚СЊСЃСЏ РІ СЂРµР¶РёРј С…РѕСЃС‚Р°',
                     uz: 'Host rejimiga o\'tish',
                   ),
             subtitle: _shellText(
               context,
               en: 'Change your current Tutta role instantly',
-              ru: 'Мгновенно поменять текущую роль в Tutta',
+              ru: 'РњРіРЅРѕРІРµРЅРЅРѕ РїРѕРјРµРЅСЏС‚СЊ С‚РµРєСѓС‰СѓСЋ СЂРѕР»СЊ РІ Tutta',
               uz: 'Tutta ichidagi joriy rolni darhol almashtirish',
             ),
             accent: const Color(0xFFF4F0E7),
@@ -1576,13 +1617,13 @@ class _ProfileHomeTab extends ConsumerWidget {
             title: _shellText(
               context,
               en: 'Sign out',
-              ru: 'Выйти',
+              ru: 'Р’С‹Р№С‚Рё',
               uz: 'Chiqish',
             ),
             subtitle: _shellText(
               context,
               en: 'Leave your account and return to Get Started',
-              ru: 'Выйти из аккаунта и вернуться к Get Started',
+              ru: 'Р’С‹Р№С‚Рё РёР· Р°РєРєР°СѓРЅС‚Р° Рё РІРµСЂРЅСѓС‚СЊСЃСЏ Рє Get Started',
               uz: 'Akkauntdan chiqib Get Started sahifasiga qaytish',
             ),
             accent: const Color(0xFFFDECEC),
@@ -1601,6 +1642,132 @@ class _ProfileHomeTab extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _showEditProfileSheet(
+  BuildContext context,
+  WidgetRef ref,
+  dynamic auth,
+) async {
+  final firstNameController = TextEditingController(
+    text: auth?.firstName ?? '',
+  );
+  final lastNameController = TextEditingController(text: auth?.lastName ?? '');
+  final phoneController = TextEditingController(text: auth?.phone ?? '');
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (sheetContext) => Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        18,
+        20,
+        MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _shellText(
+              sheetContext,
+              en: 'Edit profile',
+              ru: 'Редактировать профиль',
+              uz: 'Profilni tahrirlash',
+            ),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF12203A),
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: firstNameController,
+            decoration: InputDecoration(
+              labelText: _shellText(
+                sheetContext,
+                en: 'First name',
+                ru: 'Имя',
+                uz: 'Ism',
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: lastNameController,
+            decoration: InputDecoration(
+              labelText: _shellText(
+                sheetContext,
+                en: 'Last name',
+                ru: 'Фамилия',
+                uz: 'Familiya',
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: phoneController,
+            decoration: InputDecoration(
+              labelText: _shellText(
+                sheetContext,
+                en: 'Phone',
+                ru: 'Телефон',
+                uz: 'Telefon',
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  child: Text(
+                    MaterialLocalizations.of(sheetContext).cancelButtonLabel,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () async {
+                    await ref
+                        .read(authControllerProvider.notifier)
+                        .updateProfile(
+                          firstName: firstNameController.text.trim(),
+                          lastName: lastNameController.text.trim(),
+                          phoneNumber: phoneController.text.trim(),
+                        );
+                    if (sheetContext.mounted) {
+                      Navigator.of(sheetContext).pop();
+                    }
+                  },
+                  child: Text(
+                    _shellText(
+                      sheetContext,
+                      en: 'Save',
+                      ru: 'Сохранить',
+                      uz: 'Saqlash',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+
+  firstNameController.dispose();
+  lastNameController.dispose();
+  phoneController.dispose();
 }
 
 class _ProfileStatRow extends ConsumerWidget {
@@ -1627,13 +1794,13 @@ class _ProfileStatRow extends ConsumerWidget {
                   ? _shellText(
                       context,
                       en: 'Requests',
-                      ru: 'Заявки',
+                      ru: 'Р—Р°СЏРІРєРё',
                       uz: 'So\'rovlar',
                     )
                   : _shellText(
                       context,
                       en: 'Trips',
-                      ru: 'Поездки',
+                      ru: 'РџРѕРµР·РґРєРё',
                       uz: 'Safarlar',
                     ),
               value: '0',
@@ -1646,7 +1813,7 @@ class _ProfileStatRow extends ConsumerWidget {
               label: _shellText(
                 context,
                 en: 'Saved',
-                ru: 'Сохранено',
+                ru: 'РЎРѕС…СЂР°РЅРµРЅРѕ',
                 uz: 'Saqlangan',
               ),
               value: '$favoritesCount',
@@ -1659,12 +1826,17 @@ class _ProfileStatRow extends ConsumerWidget {
               label: _shellText(
                 context,
                 en: 'Premium',
-                ru: 'Премиум',
+                ru: 'РџСЂРµРјРёСѓРј',
                 uz: 'Premium',
               ),
               value: isPremium
-                  ? _shellText(context, en: 'ON', ru: 'ВКЛ', uz: 'YOQILGAN')
-                  : _shellText(context, en: 'OFF', ru: 'ВЫКЛ', uz: 'O\'CHIQ'),
+                  ? _shellText(context, en: 'ON', ru: 'Р’РљР›', uz: 'YOQILGAN')
+                  : _shellText(
+                      context,
+                      en: 'OFF',
+                      ru: 'Р’Р«РљР›',
+                      uz: 'O\'CHIQ',
+                    ),
               icon: Icons.workspace_premium_outlined,
             ),
           ),
@@ -1688,13 +1860,13 @@ class _ProfileStatRow extends ConsumerWidget {
                     ? _shellText(
                         context,
                         en: 'Requests',
-                        ru: 'Заявки',
+                        ru: 'Р—Р°СЏРІРєРё',
                         uz: 'So\'rovlar',
                       )
                     : _shellText(
                         context,
                         en: 'Trips',
-                        ru: 'Поездки',
+                        ru: 'РџРѕРµР·РґРєРё',
                         uz: 'Safarlar',
                       ),
                 value: '${bookings.length}',
@@ -1707,7 +1879,7 @@ class _ProfileStatRow extends ConsumerWidget {
                 label: _shellText(
                   context,
                   en: 'Saved',
-                  ru: 'Сохранено',
+                  ru: 'РЎРѕС…СЂР°РЅРµРЅРѕ',
                   uz: 'Saqlangan',
                 ),
                 value: '$favoritesCount',
@@ -1720,12 +1892,22 @@ class _ProfileStatRow extends ConsumerWidget {
                 label: _shellText(
                   context,
                   en: 'Premium',
-                  ru: 'Премиум',
+                  ru: 'РџСЂРµРјРёСѓРј',
                   uz: 'Premium',
                 ),
                 value: isPremium
-                    ? _shellText(context, en: 'ON', ru: 'ВКЛ', uz: 'YOQILGAN')
-                    : _shellText(context, en: 'OFF', ru: 'ВЫКЛ', uz: 'O\'CHIQ'),
+                    ? _shellText(
+                        context,
+                        en: 'ON',
+                        ru: 'Р’РљР›',
+                        uz: 'YOQILGAN',
+                      )
+                    : _shellText(
+                        context,
+                        en: 'OFF',
+                        ru: 'Р’Р«РљР›',
+                        uz: 'O\'CHIQ',
+                      ),
                 icon: Icons.workspace_premium_outlined,
               ),
             ),
@@ -1946,14 +2128,14 @@ String _bookingStatusLabel(BuildContext context, Object status) {
       return _shellText(
         context,
         en: 'Pending',
-        ru: 'Ожидает',
+        ru: 'РћР¶РёРґР°РµС‚',
         uz: 'Kutilmoqda',
       );
     case 'confirmed':
       return _shellText(
         context,
         en: 'Confirmed',
-        ru: 'Подтверждено',
+        ru: 'РџРѕРґС‚РІРµСЂР¶РґРµРЅРѕ',
         uz: 'Tasdiqlandi',
       );
     case 'cancelledByGuest':
@@ -1961,36 +2143,19 @@ String _bookingStatusLabel(BuildContext context, Object status) {
       return _shellText(
         context,
         en: 'Cancelled',
-        ru: 'Отменено',
+        ru: 'РћС‚РјРµРЅРµРЅРѕ',
         uz: 'Bekor qilingan',
       );
     case 'completed':
       return _shellText(
         context,
         en: 'Completed',
-        ru: 'Завершено',
+        ru: 'Р—Р°РІРµСЂС€РµРЅРѕ',
         uz: 'Yakunlangan',
       );
     default:
       return value;
   }
-}
-
-String _threadTitle(BuildContext context, dynamic thread, AppRole? role) {
-  if (role == AppRole.host) {
-    return _shellText(
-      context,
-      en: 'Guest #${thread.guestUserId}',
-      ru: 'Гость #${thread.guestUserId}',
-      uz: 'Mehmon #${thread.guestUserId}',
-    );
-  }
-  return _shellText(
-    context,
-    en: 'Host #${thread.hostUserId}',
-    ru: 'Хозяин #${thread.hostUserId}',
-    uz: 'Host #${thread.hostUserId}',
-  );
 }
 
 class _SoftPreviewCard extends StatelessWidget {

@@ -79,6 +79,29 @@ class ApiClient {
     }
   }
 
+  Future<ApiResult<Map<String, dynamic>>> patch(
+    String path, {
+    Map<String, dynamic>? data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: Options(headers: headers),
+      );
+      return ApiSuccess(response.data ?? <String, dynamic>{});
+    } on DioException catch (error) {
+      return ApiFailure(_toFailure(error));
+    } catch (_) {
+      return const ApiFailure(
+        Failure(message: 'Unknown error occurred while updating data.'),
+      );
+    }
+  }
+
   Future<ApiResult<Map<String, dynamic>>> delete(
     String path, {
     Map<String, dynamic>? data,

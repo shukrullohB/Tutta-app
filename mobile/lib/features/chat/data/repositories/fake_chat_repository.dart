@@ -1,3 +1,4 @@
+import '../../../../core/errors/app_exception.dart';
 import '../../domain/models/chat_thread.dart';
 import '../../domain/models/message.dart';
 import '../../domain/repositories/chat_repository.dart';
@@ -167,6 +168,25 @@ class FakeChatRepository implements ChatRepository {
     );
     list.add(message);
     return message;
+  }
+
+  @override
+  Future<Message> updateMessage({
+    required String threadId,
+    required String messageId,
+    required String content,
+  }) async {
+    final list = _messagesByThread[threadId];
+    if (list == null) {
+      throw AppException('Conversation not found.');
+    }
+    final index = list.indexWhere((message) => message.id == messageId);
+    if (index == -1) {
+      throw AppException('Message not found.');
+    }
+    final updated = list[index].copyWith(body: content);
+    list[index] = updated;
+    return updated;
   }
 
   @override

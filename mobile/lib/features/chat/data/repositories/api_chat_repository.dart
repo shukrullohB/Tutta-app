@@ -76,6 +76,23 @@ class ApiChatRepository implements ChatRepository {
   }
 
   @override
+  Future<Message> updateMessage({
+    required String threadId,
+    required String messageId,
+    required String content,
+  }) async {
+    final result = await _apiClient.patch(
+      ApiEndpoints.chatThreadMessageById(threadId, messageId),
+      data: <String, dynamic>{'content': content},
+    );
+
+    return result.when(
+      success: (data) => _mapMessage(ApiResponseParser.extractMap(data)),
+      failure: _throwFailure,
+    );
+  }
+
+  @override
   Future<void> deleteThread(String threadId) async {
     final result = await _apiClient.delete(
       ApiEndpoints.chatThreadById(threadId),

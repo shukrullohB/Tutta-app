@@ -157,6 +157,27 @@ class ApiAuthRepository implements AuthRepository {
     result.when(success: (_) => null, failure: _throwFailure);
   }
 
+  @override
+  Future<AuthUser> updateProfile({
+    required String firstName,
+    required String lastName,
+    String? phoneNumber,
+  }) async {
+    final result = await _apiClient.patch(
+      ApiEndpoints.usersMe,
+      data: <String, dynamic>{
+        'first_name': firstName,
+        'last_name': lastName,
+        'phone_number': phoneNumber,
+      },
+    );
+
+    return result.when(
+      success: (data) => _mapUser(ApiResponseParser.extractMap(data)),
+      failure: _throwFailure,
+    );
+  }
+
   AuthUser _mapUser(
     Map<String, dynamic> payload, {
     String? accessToken,

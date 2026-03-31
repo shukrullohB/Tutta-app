@@ -340,6 +340,35 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
     }
   }
 
+  Future<void> updateProfile({
+    required String firstName,
+    required String lastName,
+    String? phoneNumber,
+  }) async {
+    final existingUser = state.valueOrNull?.user;
+    if (existingUser == null) {
+      state = AsyncValue.error(
+        const AppException('Please sign in again.'),
+        StackTrace.current,
+      );
+      return;
+    }
+
+    state = const AsyncValue.loading();
+    try {
+      final updated = await _authRepository.updateProfile(
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: phoneNumber,
+      );
+      state = AsyncValue.data(AuthState(user: updated, phoneForOtp: null));
+    } on AppException catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(AppException(error.toString()), stackTrace);
+    }
+  }
+
   bool _isValidUzPhone(String phone) {
     return RegExp(r'^\+998\d{9}$').hasMatch(phone);
   }

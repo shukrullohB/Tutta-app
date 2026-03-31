@@ -85,7 +85,7 @@ class GoogleLoginView(views.APIView):
         )
 
 
-class MeView(generics.RetrieveAPIView):
+class MeView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [throttling.ScopedRateThrottle]
