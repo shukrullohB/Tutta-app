@@ -36,13 +36,18 @@ class ChatActions {
     required String listingId,
     required String hostUserId,
   }) async {
-    final currentUserId =
-        _ref.read(authControllerProvider).valueOrNull?.user?.id;
+    final currentUserId = _ref
+        .read(authControllerProvider)
+        .valueOrNull
+        ?.user
+        ?.id;
     if (currentUserId == null || currentUserId.isEmpty) {
       throw StateError('Authenticated user is required to open chat.');
     }
 
-    final thread = await _ref.read(chatRepositoryProvider).createOrGetThread(
+    final thread = await _ref
+        .read(chatRepositoryProvider)
+        .createOrGetThread(
           listingId: listingId,
           guestUserId: currentUserId,
           hostUserId: hostUserId,
@@ -62,10 +67,26 @@ class ChatActions {
       return;
     }
 
-    await _ref.read(chatRepositoryProvider).sendMessage(
-          threadId: threadId,
-          content: text,
-        );
+    await _ref
+        .read(chatRepositoryProvider)
+        .sendMessage(threadId: threadId, content: text);
+    _ref.invalidate(chatMessagesProvider(threadId));
+    _ref.invalidate(chatThreadsProvider);
+  }
+
+  Future<void> deleteThread(String threadId) async {
+    await _ref.read(chatRepositoryProvider).deleteThread(threadId);
+    _ref.invalidate(chatMessagesProvider(threadId));
+    _ref.invalidate(chatThreadsProvider);
+  }
+
+  Future<void> deleteMessage({
+    required String threadId,
+    required String messageId,
+  }) async {
+    await _ref
+        .read(chatRepositoryProvider)
+        .deleteMessage(threadId: threadId, messageId: messageId);
     _ref.invalidate(chatMessagesProvider(threadId));
     _ref.invalidate(chatThreadsProvider);
   }

@@ -291,30 +291,30 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Text(
                     'Tutta',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFF072A73),
                       fontSize: 68,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -1.2,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'DIGITAL CONCIERGE',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFF7A8192),
                       fontSize: 18,
                       letterSpacing: 5.5,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  SizedBox(height: 240),
+                  const SizedBox(height: 240),
                   Text(
                     'PREPARING YOUR STAY',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFF8E94A2),
                       fontSize: 15,
                       letterSpacing: 2,

@@ -72,11 +72,13 @@ class ApiEndpoints {
 
   static String notificationById(String id) => '$notifications/$id';
 
-  static String notificationMarkRead(String id) => '${notificationById(id)}/read';
+  static String notificationMarkRead(String id) =>
+      '${notificationById(id)}/read';
 
   static String notificationsMarkAllRead() => '$notifications/read-all';
 
-  static String notificationsDeviceRegister() => '$notifications/devices/register';
+  static String notificationsDeviceRegister() =>
+      '$notifications/devices/register';
 
   static String notificationsDeviceUnregister() =>
       '$notifications/devices/unregister';
@@ -86,9 +88,16 @@ class ApiEndpoints {
   static String reviewsByListing(String listingId) =>
       '$reviews?listing_id=$listingId';
 
+  static String reviewById(String reviewId) => '$reviews/$reviewId';
+
   // Chat contract
   static const chatThreads = '/chat/threads';
 
+  static String chatThreadById(String threadId) => '$chatThreads/$threadId';
+
   static String chatThreadMessages(String threadId) =>
       '$chatThreads/$threadId/messages';
+
+  static String chatThreadMessageById(String threadId, String messageId) =>
+      '${chatThreadMessages(threadId)}/$messageId';
 }

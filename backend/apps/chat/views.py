@@ -58,3 +58,23 @@ class MessageListCreateView(generics.ListCreateAPIView):
         queryset = self.get_queryset()
         queryset.exclude(sender=request.user).update(is_read=True)
         return super().list(request, *args, **kwargs)
+
+
+class ThreadDetailView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = 'chat_threads'
+
+    def get_queryset(self):
+        return Thread.objects.filter(Q(guest=self.request.user) | Q(host=self.request.user))
+
+
+class MessageDetailView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = 'chat_messages'
+
+    def get_queryset(self):
+        return Message.objects.filter(
+            Q(thread__guest=self.request.user) | Q(thread__host=self.request.user)
+        ).filter(thread_id=self.kwargs['thread_id'])

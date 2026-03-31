@@ -16,5 +16,11 @@ abstract interface class ChatRepository {
     required String threadId,
     required String content,
   });
-}
 
+  Future<void> deleteThread(String threadId);
+
+  Future<void> deleteMessage({
+    required String threadId,
+    required String messageId,
+  });
+}

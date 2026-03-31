@@ -55,19 +55,27 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
         email = 'google.demo@tutta.uz';
         displayName = 'Google Demo';
       } else {
-        final googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+        final googleSignIn = GoogleSignIn(
+          scopes: ['email', 'profile'],
+          clientId: _googleWebClientId,
+        );
         final account = await googleSignIn.signIn();
         if (account == null) {
           throw const AppException('Google sign-in was cancelled.');
         }
 
         final auth = await account.authentication;
-        if (auth.idToken == null || auth.idToken!.isEmpty) {
-          throw const AppException('Google did not return an id token.');
+        final resolvedIdToken = auth.idToken?.trim();
+        final resolvedAccessToken = auth.accessToken?.trim();
+        if ((resolvedIdToken == null || resolvedIdToken.isEmpty) &&
+            (resolvedAccessToken == null || resolvedAccessToken.isEmpty)) {
+          throw const AppException(
+            'Google did not return a usable authentication token.',
+          );
         }
 
-        idToken = auth.idToken!;
-        accessToken = auth.accessToken;
+        idToken = resolvedIdToken ?? '';
+        accessToken = resolvedAccessToken;
         email = account.email;
         displayName = account.displayName;
       }
@@ -105,6 +113,18 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
       state = AsyncValue.error(AppException(error.toString()), stackTrace);
       return false;
     }
+  }
+
+  String? get _googleWebClientId {
+    if (!kIsWeb) {
+      return null;
+    }
+
+    const value = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+    if (value.trim().isEmpty) {
+      return null;
+    }
+    return value.trim();
   }
 
   Future<String?> requestOtp(String phone) async {

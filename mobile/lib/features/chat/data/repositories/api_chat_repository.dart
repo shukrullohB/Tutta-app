@@ -75,6 +75,31 @@ class ApiChatRepository implements ChatRepository {
     );
   }
 
+  @override
+  Future<void> deleteThread(String threadId) async {
+    final result = await _apiClient.delete(
+      ApiEndpoints.chatThreadById(threadId),
+    );
+    result.when(
+      success: (_) => const <String, dynamic>{},
+      failure: _throwFailure,
+    );
+  }
+
+  @override
+  Future<void> deleteMessage({
+    required String threadId,
+    required String messageId,
+  }) async {
+    final result = await _apiClient.delete(
+      ApiEndpoints.chatThreadMessageById(threadId, messageId),
+    );
+    result.when(
+      success: (_) => const <String, dynamic>{},
+      failure: _throwFailure,
+    );
+  }
+
   ChatThread _mapThread(Map<String, dynamic> payload) {
     final last = payload['last_message'];
     final lastContent = last is Map<String, dynamic>
@@ -93,6 +118,10 @@ class ApiChatRepository implements ChatRepository {
       unreadCount: payload['unread_count'] is int
           ? payload['unread_count'] as int
           : int.tryParse(payload['unread_count']?.toString() ?? '') ?? 0,
+      counterpartName: payload['counterpart_name']?.toString() ?? 'Host',
+      counterpartRole: payload['counterpart_role']?.toString() ?? 'Host',
+      listingTitle: payload['listing_title']?.toString() ?? 'Apartment',
+      listingLocation: payload['listing_location']?.toString() ?? 'Uzbekistan',
     );
   }
 

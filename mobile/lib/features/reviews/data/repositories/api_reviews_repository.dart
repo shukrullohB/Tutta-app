@@ -50,6 +50,12 @@ class ApiReviewsRepository implements ReviewsRepository {
     );
   }
 
+  @override
+  Future<void> deleteReview(String reviewId) async {
+    final result = await _apiClient.delete(ApiEndpoints.reviewById(reviewId));
+    result.when(success: (_) => null, failure: _throwFailure);
+  }
+
   Review _mapReview(Map<String, dynamic> payload) {
     return Review(
       id: payload['id'].toString(),
@@ -61,7 +67,8 @@ class ApiReviewsRepository implements ReviewsRepository {
           ? payload['rating'] as int
           : int.tryParse(payload['rating']?.toString() ?? '') ?? 0,
       comment: payload['comment']?.toString() ?? '',
-      createdAt: DateTime.tryParse(payload['created_at']?.toString() ?? '') ??
+      createdAt:
+          DateTime.tryParse(payload['created_at']?.toString() ?? '') ??
           DateTime.now(),
     );
   }

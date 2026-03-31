@@ -149,7 +149,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 ),
                                 Expanded(
                                   child: InkWell(
-                                    onTap: () => context.push(RouteNames.searchMap),
+                                    onTap: () =>
+                                        context.push(RouteNames.searchMap),
                                     borderRadius: BorderRadius.circular(8),
                                     child: const SizedBox(
                                       height: 32,
@@ -183,7 +184,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             ref
                                 .read(searchControllerProvider.notifier)
                                 .setIncludeFreeStay(!state.includeFreeStay);
-                            ref.read(searchControllerProvider.notifier).search();
+                            ref
+                                .read(searchControllerProvider.notifier)
+                                .search();
                           },
                         ),
                         _FilterPill(
@@ -206,7 +209,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           onTap: () => _openFiltersSheet(context, state),
                         ),
                         _FilterPill(
-                          label: _priceLabel(state.minPriceUzs, state.maxPriceUzs),
+                          label: _priceLabel(
+                            state.minPriceUzs,
+                            state.maxPriceUzs,
+                          ),
                           icon: Icons.payments_outlined,
                           onTap: () => _openFiltersSheet(context, state),
                         ),
@@ -534,10 +540,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       controller.setTypes(selectedTypes.toList(growable: false));
       controller.setAmenities(selectedAmenities.toList(growable: false));
       final range = _priceRangeByPreset(selectedPricePreset);
-      controller.setPriceRange(
-        minPriceUzs: range.$1,
-        maxPriceUzs: range.$2,
-      );
+      controller.setPriceRange(minPriceUzs: range.$1, maxPriceUzs: range.$2);
       controller.search();
     }
     districtController.dispose();
@@ -576,13 +579,7 @@ String _compactPrice(int value) {
   return '${(value / 1000).round()}k';
 }
 
-enum _PricePreset {
-  any,
-  under350k,
-  between350k550k,
-  between550k800k,
-  over800k,
-}
+enum _PricePreset { any, under350k, between350k550k, between550k800k, over800k }
 
 _PricePreset _selectedPricePreset({int? min, int? max}) {
   if (min == null && max == null) {
@@ -861,15 +858,27 @@ class _SearchListingTile extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        '$reviewsCount reviews',
-                        style: const TextStyle(
-                          color: Color(0xFF5E6678),
-                          fontWeight: FontWeight.w500,
-                        ),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.rate_review_outlined,
+                            size: 15,
+                            color: Color(0xFF5E6678),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$reviewsCount reviews',
+                            style: const TextStyle(
+                              color: Color(0xFF5E6678),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                       const Spacer(),
-                      if (listing.amenities.contains(ListingAmenity.instantConfirm))
+                      if (listing.amenities.contains(
+                        ListingAmenity.instantConfirm,
+                      ))
                         const Text(
                           'Instant',
                           style: TextStyle(

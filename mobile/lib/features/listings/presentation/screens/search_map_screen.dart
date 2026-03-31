@@ -20,9 +20,8 @@ class SearchMapScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          onPressed: () => context.canPop()
-              ? context.pop()
-              : context.go(RouteNames.search),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go(RouteNames.search),
           icon: const Icon(Icons.arrow_back),
         ),
         title: const Text('Map View'),
@@ -83,12 +82,7 @@ class SearchMapScreen extends ConsumerWidget {
 }
 
 PlacemarkMapObject _toPlacemark(BuildContext context, int index, Listing item) {
-  final base = _cityCenter(item.city);
-  final offset = (index % 5) * 0.0035;
-  final point = Point(
-    latitude: base.latitude + offset,
-    longitude: base.longitude - offset,
-  );
+  final point = _listingPoint(item, index);
   return PlacemarkMapObject(
     mapId: MapObjectId('listing_${item.id}'),
     point: point,
@@ -106,10 +100,51 @@ Future<void> _onMapCreated(
 ) async {
   final point = items.isEmpty
       ? const Point(latitude: 41.3111, longitude: 69.2797)
-      : _cityCenter(items.first.city);
+      : _listingPoint(items.first, 0);
 
   await controller.moveCamera(
     CameraUpdate.newCameraPosition(CameraPosition(target: point, zoom: 11.0)),
+  );
+}
+
+Point _listingPoint(Listing item, int index) {
+  final city = item.city.trim().toLowerCase();
+  final district = item.district.trim().toLowerCase();
+  final landmark = (item.landmark ?? '').trim().toLowerCase();
+  final metro = (item.metro ?? '').trim().toLowerCase();
+
+  if (city == 'tashkent') {
+    if (district.contains('yunusabad') || landmark.contains('minor')) {
+      return const Point(latitude: 41.3667, longitude: 69.2898);
+    }
+    if (district.contains('mirzo ulugbek')) {
+      return const Point(latitude: 41.3402, longitude: 69.3345);
+    }
+    if (district.contains('mirobod') || landmark.contains('tashkent city')) {
+      return const Point(latitude: 41.2995, longitude: 69.2705);
+    }
+    if (district.contains('chilonzor')) {
+      return const Point(latitude: 41.2752, longitude: 69.2014);
+    }
+    if (district.contains('shaykhontohur') || metro.contains('paxtakor')) {
+      return const Point(latitude: 41.3147, longitude: 69.2417);
+    }
+    if (district.contains('yakkasaray')) {
+      return const Point(latitude: 41.2858, longitude: 69.2546);
+    }
+    if (district.contains('olmazor')) {
+      return const Point(latitude: 41.3525, longitude: 69.2280);
+    }
+    if (district.contains('bektemir')) {
+      return const Point(latitude: 41.2164, longitude: 69.3344);
+    }
+  }
+
+  final base = _cityCenter(item.city);
+  final offset = (index % 5) * 0.0035;
+  return Point(
+    latitude: base.latitude + offset,
+    longitude: base.longitude - offset,
   );
 }
 

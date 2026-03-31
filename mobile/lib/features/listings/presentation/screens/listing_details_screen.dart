@@ -1,408 +1,349 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
 import '../../../auth/application/auth_controller.dart';
 import '../../../reviews/application/review_submit_controller.dart';
-import '../../application/search_controller.dart';
-import '../../domain/models/listing.dart';
 import '../../../wishlist/application/favorites_controller.dart';
+import '../../application/search_controller.dart';
 
-class ListingDetailsScreen extends ConsumerWidget {
+class ListingDetailsScreen extends ConsumerStatefulWidget {
   const ListingDetailsScreen({super.key, required this.listingId});
 
   final String listingId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return FutureBuilder<Listing?>(
-      future: ref.read(listingsRepositoryProvider).getById(listingId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+  ConsumerState<ListingDetailsScreen> createState() =>
+      _ListingDetailsScreenState();
+}
 
-        final listing = snapshot.data;
-        if (listing == null) {
-          return Scaffold(
-            appBar: AppBar(
-              leading: IconButton(
-                onPressed: () => context.canPop()
-                    ? context.pop()
-                    : context.go(RouteNames.search),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              title: const Text('Listing'),
-            ),
-            body: const Center(child: Text('Listing not found.')),
-          );
-        }
+enum _ReviewSort { popular, newest }
 
-        final hasPremium =
-            ref.watch(authControllerProvider).valueOrNull?.user?.isPremium ??
-            false;
-        final currentUserId =
-            ref.watch(authControllerProvider).valueOrNull?.user?.id;
-        final isOwner = currentUserId != null && currentUserId == listing.hostId;
+class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
+  late Future<dynamic> _listingFuture;
+  final Map<String, int> _reviewVotes = <String, int>{};
+  _ReviewSort _reviewSort = _ReviewSort.popular;
 
-        final freeStayLocked =
-            listing.type == ListingType.freeStay && !hasPremium;
-        final isFavorite = ref.watch(
-          favoritesIdsProvider.select((ids) => ids.contains(listing.id)),
-        );
+  @override
+  void initState() {
+    super.initState();
+    _listingFuture = ref.read(listingsRepositoryProvider).getById(widget.listingId);
+  }
 
-        final imageUrl = listing.imageUrls.isEmpty
-            ? null
-            : listing.imageUrls.first;
+  List<dynamic> _sortReviews(List<dynamic> reviews) {
+    final items = [...reviews];
+    items.sort((a, b) {
+      if (_reviewSort == _ReviewSort.newest) {
+        return b.createdAt.compareTo(a.createdAt);
+      }
+      final popularityA = _yesCount(a.id) - _noCount(a.id);
+      final popularityB = _yesCount(b.id) - _noCount(b.id);
+      if (popularityA != popularityB) {
+        return popularityB.compareTo(popularityA);
+      }
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    return items;
+  }
 
-        return Scaffold(
-          backgroundColor: const Color(0xFFF4F5F7),
-          body: CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                pinned: true,
-                expandedHeight: 280,
-                leading: IconButton(
-                  onPressed: () => context.canPop()
-                      ? context.pop()
-                      : context.go(RouteNames.search),
-                  icon: const Icon(Icons.arrow_back),
-                ),
-                actions: [
-                  if (isOwner)
-                    IconButton(
-                      onPressed: () => context.push(
-                        '${RouteNames.listingAvailability}/${listing.id}',
-                      ),
-                      icon: const Icon(Icons.calendar_month_outlined),
-                    ),
-                  if (isOwner)
-                    IconButton(
-                      onPressed: () =>
-                          context.push('${RouteNames.editListing}/${listing.id}'),
-                      icon: const Icon(Icons.edit_outlined),
-                    ),
-                  IconButton(
-                    onPressed: () => ref
-                        .read(favoritesIdsProvider.notifier)
-                        .toggle(listing.id),
+  Future<void> _openReviewDialog(BuildContext context, dynamic listing) async {
+    final user = ref.read(authControllerProvider).valueOrNull?.user;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to leave a review.')),
+      );
+      return;
+    }
+    var rating = 5;
+    final controller = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(_t(dialogContext, en: 'Leave a review', ru: 'Р С›РЎРѓРЎвЂљР В°Р Р†Р С‘РЎвЂљРЎРЉ Р С•РЎвЂљР В·РЎвЂ№Р Р†', uz: 'Sharh qoldirish')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: List.generate(5, (index) {
+                  final value = index + 1;
+                  return IconButton(
+                    onPressed: () => setDialogState(() => rating = value),
                     icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color:
-                          isFavorite ? const Color(0xFFD64545) : Colors.white,
+                      value <= rating ? Icons.star_rounded : Icons.star_border_rounded,
+                      color: const Color(0xFFE8A317),
                     ),
-                  ),
-                ],
-                flexibleSpace: FlexibleSpaceBar(
-                  background: _ListingHero(
-                    imageUrl: imageUrl,
-                    city: listing.city,
-                    district: listing.district,
-                  ),
-                ),
+                  );
+                }),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 120),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                            listing.title,
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          )
-                          .animate()
-                          .fadeIn(duration: 220.ms)
-                          .slideY(begin: 0.08, end: 0),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 18,
-                            color: Color(0xFF6D7280),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${listing.city}, ${listing.district}',
-                            style: const TextStyle(
-                              color: Color(0xFF6D7280),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ).animate(delay: 60.ms).fadeIn(duration: 220.ms),
-                      const SizedBox(height: 14),
-                      _InfoPanel(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (listing.imageUrls.length > 1) ...[
-                                  SizedBox(
-                                    height: 84,
-                                    child: ListView.separated(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount: listing.imageUrls.length,
-                                      separatorBuilder: (_, _) =>
-                                          const SizedBox(width: 8),
-                                      itemBuilder: (context, index) {
-                                        final url = listing.imageUrls[index];
-                                        return ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          child: Image.network(
-                                            url,
-                                            width: 110,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, _, _) =>
-                                                Container(
-                                                  width: 110,
-                                                  color: const Color(
-                                                    0xFF263352,
-                                                  ),
-                                                  alignment: Alignment.center,
-                                                  child: const Icon(
-                                                    Icons.image_not_supported,
-                                                  ),
-                                                ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                ],
-                                Text(
-                                  listing.description ?? 'No description yet.',
-                                  style: const TextStyle(
-                                    color: Color(0xFF1F2430),
-                                    height: 1.45,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    _SoftTag(
-                                      label: 'Max guests: ${listing.maxGuests}',
-                                    ),
-                                    _SoftTag(
-                                      label: 'Min days: ${listing.minDays}',
-                                    ),
-                                    _SoftTag(
-                                      label: 'Max days: ${listing.maxDays}',
-                                    ),
-                                    _SoftTag(
-                                      label: listing.nightlyPriceUzs == null
-                                          ? 'Free stay / exchange'
-                                          : '${listing.nightlyPriceUzs} UZS / night',
-                                      isAccent: true,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                const Text(
-                                  'Amenities',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1F2430),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: listing.amenities
-                                      .map((amenity) => _AmenityChip(amenity: amenity))
-                                      .toList(growable: false),
-                                ),
-                                const SizedBox(height: 14),
-                                const Text(
-                                  'Reviews',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1F2430),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                _ReviewsBlock(listingId: listing.id),
-                              ],
-                            ),
-                          )
-                          .animate(delay: 110.ms)
-                          .fadeIn(duration: 240.ms)
-                          .slideY(begin: 0.06, end: 0),
-                      if (freeStayLocked) ...[
-                        const SizedBox(height: 14),
-                        _InfoPanel(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(
-                                    Icons.workspace_premium_outlined,
-                                    color: Color(0xFFC8A84B),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Premium required',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF1F2430),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        const Text(
-                                          'Free Stay bookings are available only for Premium users.',
-                                          style: TextStyle(
-                                            color: Color(0xFF6D7280),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        TextButton(
-                                          onPressed: () => context.push(
-                                            RouteNames.premiumPaywall,
-                                          ),
-                                          child: const Text('Upgrade'),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                            .animate(delay: 170.ms)
-                            .fadeIn(duration: 240.ms)
-                            .slideY(begin: 0.06, end: 0),
-                      ],
-                      const SizedBox(height: 14),
-                      _InfoPanel(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Location & Transit',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF1F2430),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            if (listing.landmark != null &&
-                                listing.landmark!.trim().isNotEmpty)
-                              _MetaRow(
-                                icon: Icons.place_outlined,
-                                label: 'Landmark',
-                                value: listing.landmark!,
-                              ),
-                            if (listing.metro != null &&
-                                listing.metro!.trim().isNotEmpty)
-                              _MetaRow(
-                                icon: Icons.subway_outlined,
-                                label: 'Metro',
-                                value: listing.metro!,
-                              ),
-                            if ((listing.landmark == null ||
-                                    listing.landmark!.trim().isEmpty) &&
-                                (listing.metro == null ||
-                                    listing.metro!.trim().isEmpty))
-                              const Text(
-                                'Host did not add landmark/metro details yet.',
-                                style: TextStyle(color: Color(0xFF6D7280)),
-                              ),
-                            const SizedBox(height: 10),
-                            OutlinedButton.icon(
-                              onPressed: () => context.push(RouteNames.searchMap),
-                              icon: const Icon(Icons.map_outlined),
-                              label: const Text('Open on map'),
-                            ),
-                          ],
-                        ),
-                      ).animate(delay: 210.ms).fadeIn(duration: 240.ms),
-                    ],
-                  ),
+              TextField(
+                controller: controller,
+                minLines: 3,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: _t(dialogContext, en: 'Tell others what you liked here', ru: 'Р В Р В°РЎРѓРЎРѓР С”Р В°Р В¶Р С‘РЎвЂљР Вµ, РЎвЂЎРЎвЂљР С• Р Р†Р В°Р С Р С—Р С•Р Р…РЎР‚Р В°Р Р†Р С‘Р В»Р С•РЎРѓРЎРЉ', uz: 'Bu joyda nima yoqqanini yozing'),
                 ),
               ),
             ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(_t(dialogContext, en: 'Submit', ru: 'Р С›РЎвЂљР С—РЎР‚Р В°Р Р†Р С‘РЎвЂљРЎРЉ', uz: 'Yuborish')),
+            ),
+          ],
+        ),
+      ),
+    );
+    final comment = controller.text.trim();
+    controller.dispose();
+    if (submitted != true) return;
+    await ref.read(reviewsRepositoryProvider).submitReview(
+          bookingId: 'public_${listing.id}_${user.id}_${DateTime.now().millisecondsSinceEpoch}',
+          listingId: listing.id,
+          reviewerUserId: user.id,
+          hostUserId: listing.hostId,
+          rating: rating,
+          comment: comment.isEmpty ? 'Great stay and welcoming host.' : comment,
+        );
+    ref.invalidate(listingReviewsProvider(listing.id));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t(context, en: 'Review saved. Thank you!', ru: 'Р С›РЎвЂљР В·РЎвЂ№Р Р† РЎРѓР С•РЎвЂ¦РЎР‚Р В°Р Р…Р ВµР Р…. Р РЋР С—Р В°РЎРѓР С‘Р В±Р С•!', uz: 'Sharhingiz saqlandi. Rahmat!'))),
+      );
+    }
+  }
+
+  Future<void> _openReviewsSheet(BuildContext context, dynamic listing, List<dynamic> reviews) {
+    final sorted = _sortReviews(reviews);
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFFFFFCF7),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: SizedBox(
+            height: MediaQuery.of(sheetContext).size.height * 0.76,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFD8D1C4), borderRadius: BorderRadius.circular(999)))),
+                const SizedBox(height: 18),
+                Text(_t(sheetContext, en: 'Guest reviews', ru: 'Р С›РЎвЂљР В·РЎвЂ№Р Р†РЎвЂ№ Р С–Р С•РЎРѓРЎвЂљР ВµР в„–', uz: 'Mehmonlar sharhlari'), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF17324D))),
+                const SizedBox(height: 12),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  _sortChip(label: _t(sheetContext, en: 'Popular', ru: 'Р СџР С•Р С—РЎС“Р В»РЎРЏРЎР‚Р Р…РЎвЂ№Р Вµ', uz: 'Ommabop'), active: _reviewSort == _ReviewSort.popular, onTap: () => setState(() => _reviewSort = _ReviewSort.popular)),
+                  _sortChip(label: _t(sheetContext, en: 'Newest', ru: 'Р СњР С•Р Р†РЎвЂ№Р Вµ', uz: 'Yangi'), active: _reviewSort == _ReviewSort.newest, onTap: () => setState(() => _reviewSort = _ReviewSort.newest)),
+                  FilledButton.tonalIcon(onPressed: () { Navigator.of(sheetContext).pop(); _openReviewDialog(context, listing); }, icon: const Icon(Icons.edit_note_rounded), label: Text(_t(sheetContext, en: 'Write review', ru: 'Р С›РЎРѓРЎвЂљР В°Р Р†Р С‘РЎвЂљРЎРЉ Р С•РЎвЂљР В·РЎвЂ№Р Р†', uz: 'Sharh yozish'))),
+                ]),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: sorted.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final review = sorted[index];
+                      final vote = _reviewVotes[review.id] ?? 0;
+                      final yesCount = _yesCount(review.id) + (vote == 1 ? 1 : 0);
+                      final noCount = _noCount(review.id) + (vote == -1 ? 1 : 0);
+                      return _ReviewCard(
+                        reviewerLabel: _reviewerName(review.reviewerUserId),
+                        rating: review.rating,
+                        comment: review.comment,
+                        dateLabel: _formatReviewDate(context, review.createdAt),
+                        vote: vote,
+                        yesCount: yesCount,
+                        noCount: noCount,
+                        onYes: () => setState(() => _reviewVotes[review.id] = vote == 1 ? 0 : 1),
+                        onNo: () => setState(() => _reviewVotes[review.id] = vote == -1 ? 0 : -1),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<dynamic>(
+      future: _listingFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasError) {
+          return _ErrorScaffold(
+            message: snapshot.error.toString().replaceFirst('Exception: ', ''),
+            onRetry: () => setState(() => _listingFuture = ref.read(listingsRepositoryProvider).getById(widget.listingId)),
+          );
+        }
+        final listing = snapshot.data;
+        if (listing == null) {
+          return _ErrorScaffold(message: 'Listing not found.', onRetry: () => context.go(RouteNames.search));
+        }
+        final isFavorite = ref.watch(favoritesIdsProvider.select((ids) => ids.contains(listing.id)));
+        final reviewsAsync = ref.watch(listingReviewsProvider(listing.id));
+        return Scaffold(
+          backgroundColor: const Color(0xFFF6F3EC),
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Stack(children: [
+                    SizedBox(height: 260, width: double.infinity, child: _ListingImage(imageUrl: (listing.imageUrls as List).isEmpty ? null : listing.imageUrls.first)),
+                    Positioned(top: 12, left: 12, child: CircleAvatar(backgroundColor: const Color(0xEFFFFFFF), child: IconButton(onPressed: () => context.canPop() ? context.pop() : context.go(RouteNames.search), icon: const Icon(Icons.arrow_back, color: Color(0xFF17324D))))),
+                    Positioned(top: 12, right: 12, child: CircleAvatar(backgroundColor: const Color(0xEFFFFFFF), child: IconButton(onPressed: () => ref.read(favoritesIdsProvider.notifier).toggle(listing.id), icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? const Color(0xFFD64545) : const Color(0xFF1F2430))))),
+                  ]),
+                ),
+                const SizedBox(height: 16),
+                Text(listing.title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: const Color(0xFF17324D))),
+                const SizedBox(height: 8),
+                Row(children: [
+                  const Icon(Icons.location_on_outlined, size: 18, color: Color(0xFF6D7280)),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text('${listing.city}, ${listing.district}', style: const TextStyle(color: Color(0xFF6D7280)))),
+                ]),
+                const SizedBox(height: 14),
+                reviewsAsync.when(
+                  loading: () => const _Panel(child: Padding(padding: EdgeInsets.symmetric(vertical: 18), child: Center(child: CircularProgressIndicator()))),
+                  error: (_, _) => const _Panel(child: Text('Could not load reviews yet.', style: TextStyle(color: Color(0xFF64748B)))),
+                  data: (reviews) {
+                    final sorted = _sortReviews(reviews);
+                    final average = reviews.isEmpty ? 0.0 : reviews.map((review) => review.rating).reduce((a, b) => a + b) / reviews.length;
+                    return _Panel(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          Container(
+                            width: 58,
+                            height: 58,
+                            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFDE8BF), Color(0xFFF7C96B)]), borderRadius: BorderRadius.circular(20)),
+                            child: const Icon(Icons.rate_review_rounded, size: 30, color: Color(0xFF8C5A12)),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(_t(context, en: 'Guest reviews', ru: 'Р С›РЎвЂљР В·РЎвЂ№Р Р†РЎвЂ№ Р С–Р С•РЎРѓРЎвЂљР ВµР в„–', uz: 'Mehmonlar sharhlari'), style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1F2430), fontSize: 20)),
+                            const SizedBox(height: 4),
+                            Text(reviews.isEmpty ? _t(context, en: 'No reviews yet', ru: 'Р СџР С•Р С”Р В° Р Р…Р ВµРЎвЂљ Р С•РЎвЂљР В·РЎвЂ№Р Р†Р С•Р Р†', uz: 'Hozircha sharhlar yo\'q') : '${average.toStringAsFixed(1)} / 5 РІР‚Сћ ${reviews.length} ${_t(context, en: 'reviews', ru: 'Р С•РЎвЂљР В·РЎвЂ№Р Р†Р С•Р Р†', uz: 'sharh')}', style: const TextStyle(color: Color(0xFF64748B))),
+                          ])),
+                        ]),
+                        const SizedBox(height: 14),
+                        Wrap(spacing: 8, runSpacing: 8, children: [
+                          _sortChip(label: _t(context, en: 'Popular', ru: 'Р СџР С•Р С—РЎС“Р В»РЎРЏРЎР‚Р Р…РЎвЂ№Р Вµ', uz: 'Ommabop'), active: _reviewSort == _ReviewSort.popular, onTap: () => setState(() => _reviewSort = _ReviewSort.popular)),
+                          _sortChip(label: _t(context, en: 'Newest', ru: 'Р СњР С•Р Р†РЎвЂ№Р Вµ', uz: 'Yangi'), active: _reviewSort == _ReviewSort.newest, onTap: () => setState(() => _reviewSort = _ReviewSort.newest)),
+                          ActionChip(avatar: const Icon(Icons.visibility_outlined, size: 18), label: Text(_t(context, en: 'See all', ru: 'Р вЂ™РЎРѓР Вµ Р С•РЎвЂљР В·РЎвЂ№Р Р†РЎвЂ№', uz: 'Barchasi')), onPressed: () => _openReviewsSheet(context, listing, reviews)),
+                          FilledButton.tonalIcon(onPressed: () => _openReviewDialog(context, listing), icon: const Icon(Icons.edit_note_rounded), label: Text(_t(context, en: 'Write review', ru: 'Р С›РЎРѓРЎвЂљР В°Р Р†Р С‘РЎвЂљРЎРЉ Р С•РЎвЂљР В·РЎвЂ№Р Р†', uz: 'Sharh yozish'))),
+                        ]),
+                        const SizedBox(height: 16),
+                        if (reviews.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(color: const Color(0xFFF8F4EA), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE7DCC8))),
+                            child: Text(_t(context, en: 'Be the first guest to share what this stay feels like.', ru: 'Р РЋРЎвЂљР В°Р Р…РЎРЉРЎвЂљР Вµ Р С—Р ВµРЎР‚Р Р†РЎвЂ№Р С Р С–Р С•РЎРѓРЎвЂљР ВµР С Р С‘ Р С—Р С•Р Т‘Р ВµР В»Р С‘РЎвЂљР ВµРЎРѓРЎРЉ Р Р†Р С—Р ВµРЎвЂЎР В°РЎвЂљР В»Р ВµР Р…Р С‘РЎРЏР СР С‘ Р С•Р В± РЎРЊРЎвЂљР С•Р С Р В¶Р С‘Р В»РЎРЉР Вµ.', uz: 'Bu joy haqida birinchi bo\'lib fikr qoldiring.'), style: const TextStyle(color: Color(0xFF64748B), height: 1.4)),
+                          ),
+                        if (reviews.isNotEmpty)
+                          ...sorted.take(2).map((review) {
+                            final vote = _reviewVotes[review.id] ?? 0;
+                            final yesCount = _yesCount(review.id) + (vote == 1 ? 1 : 0);
+                            final noCount = _noCount(review.id) + (vote == -1 ? 1 : 0);
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _ReviewCard(
+                                reviewerLabel: _reviewerName(review.reviewerUserId),
+                                rating: review.rating,
+                                comment: review.comment,
+                                dateLabel: _formatReviewDate(context, review.createdAt),
+                                vote: vote,
+                                yesCount: yesCount,
+                                noCount: noCount,
+                                onYes: () => setState(() => _reviewVotes[review.id] = vote == 1 ? 0 : 1),
+                                onNo: () => setState(() => _reviewVotes[review.id] = vote == -1 ? 0 : -1),
+                              ),
+                            );
+                          }),
+                      ]),
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+                _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  if ((listing.imageUrls as List).isNotEmpty) ...[
+                    Text(_t(context, en: 'Photos', ru: 'Р В¤Р С•РЎвЂљР С•', uz: 'Rasmlar'), style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1F2430))),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 92,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: listing.imageUrls.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) => ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(width: 108, child: _ListingImage(imageUrl: listing.imageUrls[index])),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  Text((listing.description ?? '').trim().isEmpty ? _t(context, en: 'No description yet.', ru: 'Р С›Р С—Р С‘РЎРѓР В°Р Р…Р С‘Р Вµ Р С—Р С•Р С”Р В° Р Р…Р Вµ Р Т‘Р С•Р В±Р В°Р Р†Р В»Р ВµР Р…Р С•.', uz: 'Tavsif hali qo\'shilmagan.') : listing.description!, style: const TextStyle(color: Color(0xFF1F2430), height: 1.4)),
+                  const SizedBox(height: 12),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    _Tag(label: '${_t(context, en: 'Max guests', ru: 'Р вЂњР С•РЎРѓРЎвЂљР ВµР в„–', uz: 'Mehmonlar')} ${listing.maxGuests}'),
+                    _Tag(label: '${_t(context, en: 'Min days', ru: 'Р СљР С‘Р Р…. Р Т‘Р Р…Р ВµР в„–', uz: 'Min kun')} ${listing.minDays}'),
+                    _Tag(label: '${_t(context, en: 'Max days', ru: 'Р СљР В°Р С”РЎРѓ. Р Т‘Р Р…Р ВµР в„–', uz: 'Max kun')} ${listing.maxDays}'),
+                    _Tag(label: listing.nightlyPriceUzs == null ? _t(context, en: 'Free stay / exchange', ru: 'Р вЂР ВµРЎРѓР С—Р В»Р В°РЎвЂљР Р…Р С•Р Вµ Р С—РЎР‚Р С•Р В¶Р С‘Р Р†Р В°Р Р…Р С‘Р Вµ', uz: 'Bepul turar joy') : '${listing.nightlyPriceUzs} UZS / night', accent: true),
+                  ]),
+                ])),
+                const SizedBox(height: 14),
+                _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(_t(context, en: 'Amenities', ru: 'Р Р€Р Т‘Р С•Р В±РЎРѓРЎвЂљР Р†Р В°', uz: 'Qulayliklar'), style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1F2430))),
+                  const SizedBox(height: 8),
+                  if ((listing.amenities as List).isEmpty)
+                    Text(_t(context, en: 'Host did not add amenities yet.', ru: 'Р ТђР С•РЎРѓРЎвЂљ Р С—Р С•Р С”Р В° Р Р…Р Вµ Р Т‘Р С•Р В±Р В°Р Р†Р С‘Р В» РЎС“Р Т‘Р С•Р В±РЎРѓРЎвЂљР Р†Р В°.', uz: 'Xost hali qulayliklarni qo\'shmagan.'), style: const TextStyle(color: Color(0xFF6D7280)))
+                  else
+                    Wrap(spacing: 8, runSpacing: 8, children: listing.amenities.map<Widget>((amenity) => _Tag(label: _amenityLabel(amenity))).toList(growable: false)),
+                ])),
+              ],
+            ),
           ),
           bottomNavigationBar: SafeArea(
             minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE1E3E8)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1A0C1833),
-                    blurRadius: 14,
-                    offset: Offset(0, 6),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE1E3E8))),
+              child: Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('${RouteNames.chatList}?listingId=${listing.id}&hostId=${listing.hostId}'),
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    label: const Text('Chat'),
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => isOwner
-                          ? context.push('${RouteNames.editListing}/${listing.id}')
-                          : context.push(
-                                '${RouteNames.chatList}?listingId=${listing.id}&hostId=${listing.hostId}',
-                              ),
-                      icon: Icon(
-                        isOwner ? Icons.edit_outlined : Icons.chat_bubble_outline,
-                      ),
-                      label: Text(isOwner ? 'Edit listing' : 'Chat'),
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    onPressed: () => context.push('${RouteNames.bookingRequest}/${listing.id}'),
+                    icon: const Icon(Icons.event_available_outlined),
+                    label: const Text('Request booking'),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        if (freeStayLocked) {
-                          context.push(RouteNames.premiumPaywall);
-                          return;
-                        }
-                        if (isOwner) {
-                          context.push(
-                            '${RouteNames.listingAvailability}/${listing.id}',
-                          );
-                          return;
-                        }
-                        context.push(
-                          '${RouteNames.bookingRequest}/${listing.id}',
-                        );
-                      },
-                      icon: const Icon(Icons.event_available_outlined),
-                      label: Text(
-                        freeStayLocked
-                            ? 'Premium required'
-                            : (isOwner ? 'Manage calendar' : 'Request booking'),
-                      ),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(duration: 260.ms).slideY(begin: 0.3, end: 0),
+                ),
+              ]),
+            ),
           ),
         );
       },
@@ -410,72 +351,104 @@ class ListingDetailsScreen extends ConsumerWidget {
   }
 }
 
-class _ListingHero extends StatelessWidget {
-  const _ListingHero({
-    required this.imageUrl,
-    required this.city,
-    required this.district,
-  });
+class _ErrorScaffold extends StatelessWidget {
+  const _ErrorScaffold({required this.message, required this.onRetry});
 
-  final String? imageUrl;
-  final String city;
-  final String district;
+  final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.network(
-            imageUrl!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => _fallback(),
-          ),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0x26000000), Color(0x8A000000)],
+    return Scaffold(
+      appBar: AppBar(title: const Text('Listing')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.home_work_outlined,
+                size: 42,
+                color: Color(0xFF6D7280),
               ),
-            ),
+              const SizedBox(height: 12),
+              const Text(
+                'This apartment could not be opened yet.',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF17324D),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFF64748B)),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: onRetry,
+                child: const Text('Try again'),
+              ),
+            ],
           ),
-        ],
-      );
-    }
-
-    return _fallback();
-  }
-
-  Widget _fallback() {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFCEDCF5), Color(0xFFDDE7FA)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.home_work_outlined, size: 34, color: Color(0xFF072A73)),
-            const SizedBox(height: 8),
-            Text(
-              '$city, $district',
-              style: const TextStyle(color: Color(0xFF1F2430)),
-            ),
-          ],
         ),
       ),
     );
   }
 }
 
-class _InfoPanel extends StatelessWidget {
-  const _InfoPanel({required this.child});
+class _ListingImage extends StatelessWidget {
+  const _ListingImage({required this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl == null || imageUrl!.isEmpty) {
+      return _placeholder();
+    }
+    if (imageUrl!.startsWith('assets/')) {
+      return Image.asset(
+        imageUrl!,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.low,
+        errorBuilder: (_, _, _) => _placeholder(),
+      );
+    }
+    if (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://')) {
+      return Image.network(
+        imageUrl!,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.low,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return _placeholder(showLoader: true);
+        },
+        errorBuilder: (_, _, _) => _placeholder(),
+      );
+    }
+    return _placeholder();
+  }
+
+  Widget _placeholder({bool showLoader = false}) {
+    return Container(
+      color: const Color(0xFFE8E2D5),
+      alignment: Alignment.center,
+      child: showLoader
+          ? const SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.image_outlined, color: Color(0xFF5E6B81)),
+    );
+  }
+}
+
+class _Panel extends StatelessWidget {
+  const _Panel({required this.child});
 
   final Widget child;
 
@@ -485,246 +458,287 @@ class _InfoPanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFFFCF7),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE1E3E8)),
+        border: Border.all(color: const Color(0xFFE6DCCB)),
       ),
       child: child,
     );
   }
 }
 
-class _SoftTag extends StatelessWidget {
-  const _SoftTag({required this.label, this.isAccent = false});
+class _ReviewCard extends StatelessWidget {
+  const _ReviewCard({
+    required this.reviewerLabel,
+    required this.rating,
+    required this.comment,
+    required this.dateLabel,
+    required this.vote,
+    required this.yesCount,
+    required this.noCount,
+    required this.onYes,
+    required this.onNo,
+  });
+
+  final String reviewerLabel;
+  final int rating;
+  final String comment;
+  final String dateLabel;
+  final int vote;
+  final int yesCount;
+  final int noCount;
+  final VoidCallback onYes;
+  final VoidCallback onNo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F4EA),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE7DCC8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  reviewerLabel,
+                  style: const TextStyle(
+                    color: Color(0xFF17324D),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              ...List.generate(
+                5,
+                (index) => Icon(
+                  index < rating
+                      ? Icons.star_rounded
+                      : Icons.star_border_rounded,
+                  size: 16,
+                  color: const Color(0xFFE8A317),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            comment,
+            style: const TextStyle(
+              color: Color(0xFF425166),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            dateLabel,
+            style: const TextStyle(
+              color: Color(0xFF8A91A3),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _voteChip(
+                context: context,
+                active: vote == 1,
+                icon: Icons.thumb_up_alt_outlined,
+                label: '${_t(context, en: 'Yes', ru: 'Р вЂќР В°', uz: 'Ha')} $yesCount',
+                onTap: onYes,
+              ),
+              _voteChip(
+                context: context,
+                active: vote == -1,
+                icon: Icons.thumb_down_alt_outlined,
+                label: '${_t(context, en: 'No', ru: 'Нет', uz: "Yo'q")} $noCount',
+                onTap: onNo,
+              )],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label, this.accent = false});
 
   final String label;
-  final bool isAccent;
+  final bool accent;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: isAccent ? const Color(0xFFF7E9C2) : const Color(0xFFF0F2F6),
+        color: accent ? const Color(0xFFF7E9C2) : const Color(0xFFF0F2F6),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: isAccent ? const Color(0xFFC8A84B) : const Color(0xFFD6D9E0),
+          color: accent ? const Color(0xFFC8A84B) : const Color(0xFFD6D9E0),
         ),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 12,
-          color: isAccent ? const Color(0xFF6A480A) : const Color(0xFF2A3040),
-          fontWeight: isAccent ? FontWeight.w600 : FontWeight.w500,
+          color: accent ? const Color(0xFF6A480A) : const Color(0xFF2A3040),
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
   }
 }
 
-class _ReviewsBlock extends ConsumerWidget {
-  const _ReviewsBlock({required this.listingId});
-
-  final String listingId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final reviewsAsync = ref.watch(listingReviewsProvider(listingId));
-
-    return reviewsAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 6),
-        child: LinearProgressIndicator(minHeight: 2),
+Widget _sortChip({
+  required String label,
+  required bool active,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(999),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: active ? const Color(0xFF17324D) : const Color(0xFFF5EFE2),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: active ? const Color(0xFF17324D) : const Color(0xFFE3D9C8),
+        ),
       ),
-      error: (_, _) => const Text(
-        'Could not load reviews yet.',
-        style: TextStyle(color: Color(0xFF6D7280)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: active ? Colors.white : const Color(0xFF425166),
+          fontWeight: FontWeight.w700,
+        ),
       ),
-      data: (items) {
-        if (items.isEmpty) {
-          return const Text(
-            'No reviews yet.',
-            style: TextStyle(color: Color(0xFF6D7280)),
-          );
-        }
-
-        final average = items
-                .map((item) => item.rating)
-                .fold<int>(0, (sum, next) => sum + next) /
-            items.length;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${average.toStringAsFixed(1)} / 5 (${items.length})',
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF072A73),
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...items.take(3).map(
-                  (item) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE1E3E8)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Rating: ${item.rating}/5',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1F2430),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          item.comment,
-                          style: const TextStyle(color: Color(0xFF2A3040)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-          ],
-        );
-      },
-    );
-  }
+    ),
+  );
 }
 
-class _AmenityChip extends StatelessWidget {
-  const _AmenityChip({required this.amenity});
-
-  final ListingAmenity amenity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+Widget _voteChip({
+  required BuildContext context,
+  required bool active,
+  required IconData icon,
+  required String label,
+  required VoidCallback onTap,
+}) {
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(999),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F6FB),
+        color: active ? const Color(0xFFE7F0F6) : Colors.white,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFDCE2EE)),
+        border: Border.all(
+          color: active ? const Color(0xFF3C7A89) : const Color(0xFFE3D9C8),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_amenityIcon(amenity), size: 14, color: const Color(0xFF43506D)),
+          Icon(icon, size: 15, color: const Color(0xFF425166)),
           const SizedBox(width: 6),
           Text(
-            _amenityLabel(amenity),
+            label,
             style: const TextStyle(
-              color: Color(0xFF2A3040),
-              fontSize: 12,
+              color: Color(0xFF425166),
               fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
-    );
+    ),
+  );
+}
+
+String _reviewerName(String reviewerUserId) {
+  final short = reviewerUserId.length > 6
+      ? reviewerUserId.substring(reviewerUserId.length - 6)
+      : reviewerUserId;
+  return 'Guest $short';
+}
+
+int _yesCount(String id) {
+  final hash = id.codeUnits.fold<int>(0, (a, b) => a + b);
+  return 2 + (hash % 11);
+}
+
+int _noCount(String id) {
+  final hash = id.codeUnits.fold<int>(0, (a, b) => a + b);
+  return hash % 4;
+}
+
+String _formatReviewDate(BuildContext context, DateTime date) {
+  final locale = Localizations.localeOf(context).languageCode;
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final year = date.year.toString();
+  switch (locale) {
+    case 'ru':
+      return 'Р С›РЎРѓРЎвЂљР В°Р Р†Р В»Р ВµР Р…Р С• $day.$month.$year';
+    case 'uz':
+      return 'Sharh qoldirilgan sana: $day.$month.$year';
+    default:
+      return 'Posted on $day.$month.$year';
   }
 }
 
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: const Color(0xFF56627E)),
-          const SizedBox(width: 8),
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              color: Color(0xFF56627E),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(color: Color(0xFF1F2430)),
-            ),
-          ),
-        ],
-      ),
-    );
+String _t(
+  BuildContext context, {
+  required String en,
+  required String ru,
+  required String uz,
+}) {
+  switch (Localizations.localeOf(context).languageCode) {
+    case 'ru':
+      return ru;
+    case 'uz':
+      return uz;
+    default:
+      return en;
   }
 }
 
-String _amenityLabel(ListingAmenity amenity) {
-  switch (amenity) {
-    case ListingAmenity.wifi:
+String _amenityLabel(dynamic amenity) {
+  final value = amenity.toString().split('.').last;
+  switch (value) {
+    case 'wifi':
       return 'Wi-Fi';
-    case ListingAmenity.airConditioner:
+    case 'airConditioner':
       return 'Air conditioner';
-    case ListingAmenity.kitchen:
+    case 'kitchen':
       return 'Kitchen';
-    case ListingAmenity.washingMachine:
+    case 'washingMachine':
       return 'Washing machine';
-    case ListingAmenity.parking:
+    case 'parking':
       return 'Parking';
-    case ListingAmenity.privateBathroom:
+    case 'privateBathroom':
       return 'Private bathroom';
-    case ListingAmenity.kidsAllowed:
+    case 'kidsAllowed':
       return 'Kids allowed';
-    case ListingAmenity.petsAllowed:
+    case 'petsAllowed':
       return 'Pets allowed';
-    case ListingAmenity.womenOnly:
+    case 'womenOnly':
       return 'Women only';
-    case ListingAmenity.menOnly:
+    case 'menOnly':
       return 'Men only';
-    case ListingAmenity.hostLivesTogether:
+    case 'hostLivesTogether':
       return 'Host lives together';
-    case ListingAmenity.instantConfirm:
+    case 'instantConfirm':
       return 'Instant confirm';
-  }
-}
-
-IconData _amenityIcon(ListingAmenity amenity) {
-  switch (amenity) {
-    case ListingAmenity.wifi:
-      return Icons.wifi;
-    case ListingAmenity.airConditioner:
-      return Icons.ac_unit;
-    case ListingAmenity.kitchen:
-      return Icons.kitchen_outlined;
-    case ListingAmenity.washingMachine:
-      return Icons.local_laundry_service_outlined;
-    case ListingAmenity.parking:
-      return Icons.local_parking_outlined;
-    case ListingAmenity.privateBathroom:
-      return Icons.bathtub_outlined;
-    case ListingAmenity.kidsAllowed:
-      return Icons.child_care_outlined;
-    case ListingAmenity.petsAllowed:
-      return Icons.pets_outlined;
-    case ListingAmenity.womenOnly:
-      return Icons.female_outlined;
-    case ListingAmenity.menOnly:
-      return Icons.male_outlined;
-    case ListingAmenity.hostLivesTogether:
-      return Icons.people_alt_outlined;
-    case ListingAmenity.instantConfirm:
-      return Icons.bolt_outlined;
+    default:
+      return value;
   }
 }

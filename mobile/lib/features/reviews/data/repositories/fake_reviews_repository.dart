@@ -104,4 +104,10 @@ class FakeReviewsRepository implements ReviewsRepository {
         .where((review) => review.listingId == listingId)
         .toList(growable: false);
   }
+
+  @override
+  Future<void> deleteReview(String reviewId) async {
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    _reviews.removeWhere((review) => review.id == reviewId);
+  }
 }

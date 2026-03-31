@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppTheme {
-  static const _background = Color(0xFFF7F9FC);
+  static const _background = Color(0xFFF8F6F1);
   static const _surface = Color(0xFFFFFFFF);
-  static const _surfaceRaised = Color(0xFFF0F4FA);
-  static const _accent = Color(0xFF1A5EFF);
-  static const _secondary = Color(0xFFFF8A3D);
+  static const _surfaceRaised = Color(0xFFF3F6F3);
+  static const _accent = Color(0xFF2F6C8F);
+  static const _secondary = Color(0xFFD38C52);
   static const _text = Color(0xFF12203A);
 
   static ThemeData get light {
@@ -27,9 +27,9 @@ abstract final class AppTheme {
       scrim: Colors.black,
       inverseSurface: Color(0xFF0F1B2E),
       onInverseSurface: Colors.white,
-      inversePrimary: Color(0xFF8DB0FF),
-      tertiary: Color(0xFF6FD3B4),
-      onTertiary: Color(0xFF0E2A21),
+      inversePrimary: Color(0xFF8BC2CC),
+      tertiary: Color(0xFF81B29A),
+      onTertiary: Color(0xFF163127),
     );
 
     return ThemeData(
@@ -73,15 +73,15 @@ abstract final class AppTheme {
       switchTheme: SwitchThemeData(
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const Color(0x661A5EFF);
+            return const Color(0x663B7B94);
           }
-          return const Color(0x3397A6C3);
+          return const Color(0x3398B9B1);
         }),
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return _accent;
           }
-          return const Color(0xFF97A6C3);
+          return const Color(0xFF8EA29E);
         }),
       ),
       listTileTheme: const ListTileThemeData(
@@ -99,7 +99,7 @@ abstract final class AppTheme {
       ),
       navigationBarTheme: const NavigationBarThemeData(
         backgroundColor: Color(0xFFFFFFFF),
-        indicatorColor: Color(0x1A1A5EFF),
+        indicatorColor: Color(0x1A2F6C8F),
         iconTheme: WidgetStatePropertyAll(
           IconThemeData(color: Color(0xFF5D6C8A)),
         ),
@@ -109,13 +109,10 @@ abstract final class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: const Color(0xFFF2F5FC),
-        selectedColor: const Color(0x261A5EFF),
+        selectedColor: const Color(0x1F2F6C8F),
         disabledColor: const Color(0xFFE7EDF8),
         side: const BorderSide(color: Color(0xFFDCE5F5)),
-        labelStyle: const TextStyle(
-          color: _text,
-          fontWeight: FontWeight.w500,
-        ),
+        labelStyle: const TextStyle(color: _text, fontWeight: FontWeight.w500),
         secondaryLabelStyle: const TextStyle(color: _accent),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

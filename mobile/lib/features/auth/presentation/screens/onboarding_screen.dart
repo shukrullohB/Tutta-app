@@ -66,8 +66,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     super.dispose();
   }
 
-  void _finish() {
-    ref.read(appSessionControllerProvider.notifier).completeOnboarding();
+  Future<void> _finish() async {
+    await ref.read(appSessionControllerProvider.notifier).completeOnboarding();
+    if (!mounted) {
+      return;
+    }
     context.go(RouteNames.auth);
   }
 
@@ -87,7 +90,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 children: [
                   const Spacer(),
                   TextButton(
-                    onPressed: _finish,
+                    onPressed: () => _finish(),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF3B4152),
                     ),
@@ -107,7 +110,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 controller: _pageController,
                 itemCount: _slides.length,
                 onPageChanged: (index) => setState(() => _currentIndex = index),
-                itemBuilder: (context, index) => _OnboardingPage(slide: _slides[index]),
+                itemBuilder: (context, index) =>
+                    _OnboardingPage(slide: _slides[index]),
               ),
             ),
             Padding(
@@ -166,9 +170,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: _finish,
+                    onPressed: () => _finish(),
                     child: Text(
-                      slide.showStep ? 'Tell me more about the exchange' : 'SKIP',
+                      slide.showStep
+                          ? 'Tell me more about the exchange'
+                          : 'SKIP',
                       style: const TextStyle(
                         color: Color(0xFF3A4355),
                         fontSize: 17,
@@ -233,93 +239,109 @@ class _OnboardingPage extends StatelessWidget {
             children: [
               SizedBox(height: isCompact ? 4 : 8),
               SizedBox(
-                height: heroHeight,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
-                      child: slide.heroAssetPath != null
-                          ? Image.asset(slide.heroAssetPath!, fit: BoxFit.cover)
-                          : DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [slide.heroTop, slide.heroBottom],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
-                              ),
-                              child: Align(
-                                alignment: Alignment.bottomCenter,
-                                child: Container(
-                                  margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                                  padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+                    height: heroHeight,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(36),
+                          child: slide.heroAssetPath != null
+                              ? Image.asset(
+                                  slide.heroAssetPath!,
+                                  fit: BoxFit.cover,
+                                )
+                              : DecoratedBox(
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF072A73),
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(color: const Color(0x22000000)),
+                                    gradient: LinearGradient(
+                                      colors: [slide.heroTop, slide.heroBottom],
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                    ),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFF3CD8D),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          slide.heroIcon,
-                                          color: const Color(0xFF251700),
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Container(
+                                      margin: const EdgeInsets.fromLTRB(
+                                        20,
+                                        0,
+                                        20,
+                                        20,
+                                      ),
+                                      padding: const EdgeInsets.fromLTRB(
+                                        14,
+                                        12,
+                                        16,
+                                        12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF072A73),
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(
+                                          color: const Color(0x22000000),
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              slide.heroTitle,
-                                              style: const TextStyle(
-                                                color: Color(0xFFBFD0EF),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: 1.0,
-                                              ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 44,
+                                            height: 44,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFF3CD8D),
+                                              shape: BoxShape.circle,
                                             ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              slide.heroValue,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w700,
-                                              ),
+                                            child: Icon(
+                                              slide.heroIcon,
+                                              color: const Color(0xFF251700),
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  slide.heroTitle,
+                                                  style: const TextStyle(
+                                                    color: Color(0xFFBFD0EF),
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: 1.0,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  slide.heroValue,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(36),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x1A000000),
+                                blurRadius: 26,
+                                offset: Offset(0, 10),
                               ),
-                            ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(36),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x1A000000),
-                            blurRadius: 26,
-                            offset: Offset(0, 10),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              )
+                  )
                   .animate()
                   .fadeIn(duration: 280.ms)
                   .slideY(begin: 0.07, end: 0, curve: Curves.easeOutCubic),

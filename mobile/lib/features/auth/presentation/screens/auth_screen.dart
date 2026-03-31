@@ -3,8 +3,10 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/app.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/errors/app_exception.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../application/auth_controller.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
@@ -46,7 +48,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     if (phoneForOtp != null && phoneForOtp.isNotEmpty) {
-      _setInlineError(null);
       final encodedPhone = Uri.encodeQueryComponent(phoneForOtp);
       context.go('${RouteNames.authVerify}?phone=$encodedPhone');
       return;
@@ -59,10 +60,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _signInWithEmail() async {
+    final loc = AppLocalizations.of(context);
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
+
     if (email.isEmpty || password.isEmpty) {
-      _setInlineError('Enter your email and password.');
+      _setInlineError(loc.authEnterEmailPassword);
       return;
     }
 
@@ -70,6 +73,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     await ref
         .read(authControllerProvider.notifier)
         .login(email: email, password: password);
+
     if (!mounted) {
       return;
     }
@@ -84,17 +88,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _register() async {
+    final loc = AppLocalizations.of(context);
     final fullName = _fullNameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final phone = _phoneController.text.trim();
 
     if (fullName.isEmpty || email.isEmpty || password.isEmpty) {
-      _setInlineError('Fill in full name, email, and password.');
+      _setInlineError(loc.authFillRequired);
       return;
     }
     if (!_agreed) {
-      _setInlineError('Please accept Terms and Privacy Policy.');
+      _setInlineError(loc.authAcceptTerms);
       return;
     }
 
@@ -113,7 +118,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           password: password,
           firstName: firstName,
           lastName: lastName,
-          role: 'renter',
+          role: 'guest',
           phoneNumber: phone.isEmpty ? null : phone,
         );
 
@@ -141,7 +146,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     if (success) {
-      _setInlineError(null);
       context.go(RouteNames.roleSelector);
       return;
     }
@@ -159,18 +163,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
     setState(() => _inlineError = message);
     if (message != null && message.isNotEmpty) {
-      _showSnack(message);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
-  }
-
-  void _showSnack(String message) {
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _mapError(Object error) {
@@ -182,66 +178,45 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final loc = AppLocalizations.of(context);
     final authState = ref.watch(authControllerProvider);
     final isLoading = authState.isLoading;
-
-    final authError = authState.whenOrNull(
-      error: (error, _) => _mapError(error),
-    );
-    final shownError = _inlineError ?? authError;
+    final shownError =
+        _inlineError ??
+        authState.whenOrNull(error: (error, _) => _mapError(error));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F5F7),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(28, 14, 28, 30),
+          padding: const EdgeInsets.fromLTRB(28, 18, 28, 30),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (!_isSignUp)
-                Row(
-                  children: [
-                    const Icon(Icons.menu, color: Color(0xFF072A73)),
-                    const Spacer(),
-                    const Text(
-                      'Tutta',
-                      style: TextStyle(
-                        color: Color(0xFF072A73),
-                        fontSize: 56 / 2,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const Spacer(),
-                    const CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Color(0xFFF3CDAD),
-                      child: Icon(
-                        Icons.person,
-                        size: 18,
-                        color: Color(0xFFB78664),
-                      ),
-                    ),
-                  ],
-                ).animate().fadeIn(duration: 220.ms)
-              else
-                const Center(
-                  child: Text(
+              Row(
+                children: [
+                  const LanguageSelector(),
+                  const Spacer(),
+                  const Text(
                     'Tutta',
                     style: TextStyle(
                       color: Color(0xFF072A73),
-                      fontSize: 56 / 2,
+                      fontSize: 28,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                ).animate().fadeIn(duration: 220.ms),
-              const SizedBox(height: 20),
+                  const Spacer(),
+                  const SizedBox(width: 48),
+                ],
+              ).animate().fadeIn(duration: 220.ms),
+              const SizedBox(height: 24),
               if (!_isSignUp) ...[
                 Text.rich(
-                  const TextSpan(
+                  TextSpan(
                     children: [
                       TextSpan(
-                        text: 'Welcome\n',
-                        style: TextStyle(
+                        text: '${loc.authWelcome}\n',
+                        style: const TextStyle(
                           color: Color(0xFF072A73),
                           fontSize: 42,
                           fontWeight: FontWeight.w700,
@@ -249,8 +224,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         ),
                       ),
                       TextSpan(
-                        text: 'Back.',
-                        style: TextStyle(
+                        text: loc.authBack,
+                        style: const TextStyle(
                           color: Color(0xFF7FA0F3),
                           fontSize: 42,
                           fontWeight: FontWeight.w700,
@@ -261,21 +236,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Access your curated world of hospitality and editorial stays.',
-                  style: TextStyle(
+                Text(
+                  loc.authSubtitle,
+                  style: const TextStyle(
                     color: Color(0xFF3D4350),
-                    fontSize: 20 / 1.2,
+                    fontSize: 17,
                     height: 1.35,
                   ),
                 ),
               ] else ...[
-                const Center(
+                Center(
                   child: Text(
-                    'Create your account',
-                    style: TextStyle(
+                    loc.authCreateAccount,
+                    style: const TextStyle(
                       color: Color(0xFF072A73),
-                      fontSize: 52 / 2,
+                      fontSize: 26,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -284,7 +259,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Center(
                   child: Text.rich(
                     TextSpan(
-                      text: 'Already a member? ',
+                      text: '${loc.authAlreadyMember} ',
                       style: const TextStyle(
                         color: Color(0xFF3D4350),
                         fontSize: 17,
@@ -294,9 +269,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           alignment: PlaceholderAlignment.middle,
                           child: GestureDetector(
                             onTap: () => setState(() => _isSignUp = false),
-                            child: const Text(
-                              'Sign in',
-                              style: TextStyle(
+                            child: Text(
+                              loc.authSignInAction,
+                              style: const TextStyle(
                                 color: Color(0xFF072A73),
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,
@@ -333,26 +308,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   Expanded(
                     child: _SocialButton(
                       label: 'Google',
-                      icon: Icons.g_mobiledata,
+                      isGoogle: true,
                       onTap: isLoading ? null : _signInWithGoogle,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _SocialButton(
-                      label: 'Apple',
-                      icon: Icons.apple,
-                      onTap: () =>
-                          _showSnack('Apple sign-in is not connected yet.'),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
-              const _DividerText(label: 'OR CONTINUE WITH EMAIL'),
+              _DividerText(label: loc.authContinueWithEmail),
               const SizedBox(height: 18),
               if (_isSignUp) ...[
-                _FieldLabel(text: 'FULL NAME'),
+                _FieldLabel(text: loc.authFullName.toUpperCase()),
                 _LightField(
                   controller: _fullNameController,
                   hintText: 'John Doe',
@@ -360,7 +326,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ),
                 const SizedBox(height: 10),
               ],
-              _FieldLabel(text: 'EMAIL ADDRESS'),
+              _FieldLabel(text: loc.authEmail.toUpperCase()),
               _LightField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -371,7 +337,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
               const SizedBox(height: 10),
               if (_isSignUp) ...[
-                _FieldLabel(text: 'PHONE NUMBER'),
+                _FieldLabel(text: loc.authPhone.toUpperCase()),
                 _LightField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
@@ -382,12 +348,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ],
               Row(
                 children: [
-                  const _FieldLabel(text: 'PASSWORD'),
+                  _FieldLabel(text: loc.authPassword.toUpperCase()),
                   const Spacer(),
                   if (!_isSignUp)
-                    const Text(
-                      'FORGOT PASSWORD?',
-                      style: TextStyle(
+                    Text(
+                      loc.authForgotPassword.toUpperCase(),
+                      style: const TextStyle(
                         color: Color(0xFF6A480A),
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.1,
@@ -415,12 +381,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       onChanged: (v) => setState(() => _agreed = v ?? false),
                       side: const BorderSide(color: Color(0xFFB9BECC)),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Padding(
-                        padding: EdgeInsets.only(top: 10),
+                        padding: const EdgeInsets.only(top: 10),
                         child: Text(
-                          'I agree to the Terms of Service and Privacy Policy.',
-                          style: TextStyle(
+                          loc.authTermsAgree,
+                          style: const TextStyle(
                             color: Color(0xFF232A3A),
                             fontSize: 16,
                             height: 1.3,
@@ -457,10 +423,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                   ),
                                 ),
                               )
-                            : const Text(
-                                'Create Account',
-                                style: TextStyle(
-                                  fontSize: 22 / 1.2,
+                            : Text(
+                                loc.authCreateButton,
+                                style: const TextStyle(
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -485,10 +451,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                   ),
                                 ),
                               )
-                            : const Text(
-                                'Sign In',
-                                style: TextStyle(
-                                  fontSize: 22 / 1.2,
+                            : Text(
+                                loc.authSignInAction,
+                                style: const TextStyle(
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -511,25 +477,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       Icons.smartphone,
                       color: Color(0xFF576680),
                     ),
-                    label: const Text(
-                      'Continue with Phone Number',
-                      style: TextStyle(
+                    label: Text(
+                      loc.authContinueWithPhone,
+                      style: const TextStyle(
                         color: Color(0xFF576680),
-                        fontSize: 22 / 1.2,
+                        fontSize: 18,
                       ),
                     ),
                   ),
                 ),
-              if (!_isSignUp) ...[
-                const SizedBox(height: 12),
-                const _DividerText(label: 'OR CONTINUE WITH'),
-              ],
               const SizedBox(height: 18),
               if (!_isSignUp)
                 Center(
                   child: Text.rich(
                     TextSpan(
-                      text: 'New to Tutta? ',
+                      text: '${loc.authNewToTutta} ',
                       style: const TextStyle(
                         color: Color(0xFF3D4350),
                         fontSize: 17,
@@ -539,9 +501,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           alignment: PlaceholderAlignment.middle,
                           child: GestureDetector(
                             onTap: () => setState(() => _isSignUp = true),
-                            child: const Text(
-                              'Join the club',
-                              style: TextStyle(
+                            child: Text(
+                              loc.authRegister,
+                              style: const TextStyle(
                                 color: Color(0xFF072A73),
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
@@ -550,22 +512,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ),
-              if (_isSignUp)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: Text(
-                      '© 2026 TUTTA HOSPITALITY GROUP. ALL RIGHTS RESERVED.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFF6F7483),
-                        fontSize: 12,
-                        letterSpacing: 3,
-                        fontWeight: FontWeight.w500,
-                      ),
                     ),
                   ),
                 ),
@@ -580,9 +526,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     final controller = TextEditingController(text: _phoneController.text);
     final value = await showDialog<String>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
+        final loc = AppLocalizations.of(dialogContext);
         return AlertDialog(
-          title: const Text('Continue with phone'),
+          title: Text(loc.authPhoneDialogTitle),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.phone,
@@ -590,13 +537,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                MaterialLocalizations.of(dialogContext).cancelButtonLabel,
+              ),
             ),
             FilledButton(
               onPressed: () =>
-                  Navigator.of(context).pop(controller.text.trim()),
-              child: const Text('Continue'),
+                  Navigator.of(dialogContext).pop(controller.text.trim()),
+              child: Text(
+                MaterialLocalizations.of(dialogContext).okButtonLabel,
+              ),
             ),
           ],
         );
@@ -661,10 +612,7 @@ class _LightField extends StatelessWidget {
         obscureText: obscureText,
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(
-            color: Color(0xFFA8AEB8),
-            fontSize: 22 / 1.2,
-          ),
+          hintStyle: const TextStyle(color: Color(0xFFA8AEB8), fontSize: 18),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
@@ -711,11 +659,15 @@ class _DividerText extends StatelessWidget {
 }
 
 class _SocialButton extends StatelessWidget {
-  const _SocialButton({required this.label, required this.onTap, this.icon});
+  const _SocialButton({
+    required this.label,
+    required this.onTap,
+    this.isGoogle = false,
+  });
 
   final String label;
   final VoidCallback? onTap;
-  final IconData? icon;
+  final bool isGoogle;
 
   @override
   Widget build(BuildContext context) {
@@ -730,19 +682,49 @@ class _SocialButton extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (icon != null) ...[
-            Icon(icon, color: const Color(0xFF1B202A), size: 22),
-            const SizedBox(width: 8),
-          ],
+          if (isGoogle) ...[const _GoogleBadge(), const SizedBox(width: 10)],
           Text(
             label,
             style: const TextStyle(
               color: Color(0xFF1B202A),
-              fontSize: 34 / 2,
+              fontSize: 17,
               fontWeight: FontWeight.w600,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GoogleBadge extends StatelessWidget {
+  const _GoogleBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFE2E8F2)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x140F172A),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: const Text(
+        'G',
+        style: TextStyle(
+          color: Color(0xFF4285F4),
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

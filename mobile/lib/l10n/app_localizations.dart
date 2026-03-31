@@ -117,6 +117,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Continue'**
   String get continueLabel;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @languageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get languageTitle;
+
+  /// No description provided for @languageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Uzbek / Russian / English'**
+  String get languageSubtitle;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// No description provided for @notificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push and in-app preferences'**
+  String get notificationsSubtitle;
+
+  /// No description provided for @privacyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get privacyTitle;
+
+  /// No description provided for @privacySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Data and visibility settings'**
+  String get privacySubtitle;
+
+  /// No description provided for @favoritesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get favoritesTitle;
+
+  /// No description provided for @favoritesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your saved stays will appear here'**
+  String get favoritesEmptyTitle;
+
+  /// No description provided for @favoritesEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add listings to favorites so you can return to them quickly.'**
+  String get favoritesEmptySubtitle;
+
+  /// No description provided for @onMap.
+  ///
+  /// In en, this message translates to:
+  /// **'On map'**
+  String get onMap;
+
+  /// No description provided for @perNight.
+  ///
+  /// In en, this message translates to:
+  /// **'per night'**
+  String get perNight;
+
+  /// No description provided for @freeStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Free stay'**
+  String get freeStay;
+
+  /// No description provided for @leaveReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave a review'**
+  String get leaveReview;
+
+  /// No description provided for @reviewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your review...'**
+  String get reviewHint;
+
+  /// No description provided for @reviewThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for your review!'**
+  String get reviewThanks;
+
+  /// No description provided for @authWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome'**
+  String get authWelcome;
+
+  /// No description provided for @authBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back.'**
+  String get authBack;
+
+  /// No description provided for @authSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Access your curated world of hospitality and editorial stays.'**
+  String get authSubtitle;
+
+  /// No description provided for @authCreateAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your account'**
+  String get authCreateAccount;
+
+  /// No description provided for @authAlreadyMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Already a member?'**
+  String get authAlreadyMember;
+
+  /// No description provided for @authRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get authRegister;
+
+  /// No description provided for @authFullName.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get authFullName;
+
+  /// No description provided for @authEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email address'**
+  String get authEmail;
+
+  /// No description provided for @authPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get authPhone;
+
+  /// No description provided for @authPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get authPassword;
+
+  /// No description provided for @authForgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get authForgotPassword;
+
+  /// No description provided for @authContinueWithEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'OR CONTINUE WITH EMAIL'**
+  String get authContinueWithEmail;
+
+  /// No description provided for @authContinueWithPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with phone number'**
+  String get authContinueWithPhone;
+
+  /// No description provided for @authCreateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get authCreateButton;
+
+  /// No description provided for @authNewToTutta.
+  ///
+  /// In en, this message translates to:
+  /// **'New to Tutta?'**
+  String get authNewToTutta;
+
+  /// No description provided for @authSignInAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get authSignInAction;
+
+  /// No description provided for @authTermsAgree.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to the Terms of Service and Privacy Policy.'**
+  String get authTermsAgree;
+
+  /// No description provided for @authPhoneDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with phone'**
+  String get authPhoneDialogTitle;
+
+  /// No description provided for @authEnterEmailPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email and password.'**
+  String get authEnterEmailPassword;
+
+  /// No description provided for @authFillRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in full name, email, and password.'**
+  String get authFillRequired;
+
+  /// No description provided for @authAcceptTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Please accept Terms and Privacy Policy.'**
+  String get authAcceptTerms;
 }
 
 class _AppLocalizationsDelegate

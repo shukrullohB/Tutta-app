@@ -11,4 +11,6 @@ abstract interface class ReviewsRepository {
   });
 
   Future<List<Review>> getByListing(String listingId);
+
+  Future<void> deleteReview(String reviewId);
 }
