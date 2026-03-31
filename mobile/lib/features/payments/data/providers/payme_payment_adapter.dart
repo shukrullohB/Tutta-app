@@ -1,0 +1,36 @@
+import '../../domain/models/payment_method.dart';
+import '../../domain/models/payment_status.dart';
+import 'payment_provider_adapter.dart';
+
+class PaymePaymentAdapter implements PaymentProviderAdapter {
+  final Map<String, int> _pollCounter = <String, int>{};
+
+  @override
+  PaymentMethod get method => PaymentMethod.payme;
+
+  @override
+  Future<String> createCheckout({
+    required String paymentIntentId,
+    required int amountUzs,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    _pollCounter[paymentIntentId] = 0;
+    return 'https://checkout.payme.uz/pay/$paymentIntentId?amount=$amountUzs';
+  }
+
+  @override
+  Future<PaymentStatus> pollStatus(String paymentIntentId) async {
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    final current = (_pollCounter[paymentIntentId] ?? 0) + 1;
+    _pollCounter[paymentIntentId] = current;
+
+    if (current == 1) {
+      return PaymentStatus.processing;
+    }
+    if (current == 2) {
+      return PaymentStatus.failed;
+    }
+    return PaymentStatus.processing;
+  }
+}
