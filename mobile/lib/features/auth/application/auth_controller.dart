@@ -59,6 +59,11 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
           scopes: ['email', 'profile'],
           clientId: _googleWebClientId,
         );
+        try {
+          await googleSignIn.disconnect();
+        } catch (_) {
+          await googleSignIn.signOut();
+        }
         final account = await googleSignIn.signIn();
         if (account == null) {
           throw const AppException('Google sign-in was cancelled.');
@@ -104,7 +109,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
       _read.read(authTokenProvider.notifier).state = access;
 
       _lastOtpPhone = null;
-      state = AsyncValue.data(AuthState(user: user, phoneForOtp: null));
+      state = AsyncValue.data(
+        AuthState(user: user, phoneForOtp: null, hydrated: true),
+      );
       return true;
     } on AppException catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -145,7 +152,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
     try {
       await _otpAuthRepository.sendOtp(phone: normalizedPhone);
       _lastOtpPhone = normalizedPhone;
-      state = AsyncValue.data(current.copyWith(phoneForOtp: normalizedPhone));
+      state = AsyncValue.data(
+        current.copyWith(phoneForOtp: normalizedPhone, hydrated: true),
+      );
       return normalizedPhone;
     } on AppException catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -199,7 +208,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
       }
 
       _lastOtpPhone = null;
-      state = AsyncValue.data(current.copyWith(user: user, clearPhone: true));
+      state = AsyncValue.data(
+        current.copyWith(user: user, clearPhone: true, hydrated: true),
+      );
     } on AppException catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     } catch (error, stackTrace) {
@@ -210,7 +221,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
   void clearOtpPhone() {
     final current = state.valueOrNull ?? const AuthState.initial();
     _lastOtpPhone = null;
-    state = AsyncValue.data(current.copyWith(clearPhone: true));
+    state = AsyncValue.data(current.copyWith(clearPhone: true, hydrated: true));
   }
 
   Future<void> login({required String email, required String password}) async {
@@ -236,7 +247,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
           .saveTokens(accessToken: access, refreshToken: refresh);
       _read.read(authTokenProvider.notifier).state = access;
 
-      state = AsyncValue.data(AuthState(user: user, phoneForOtp: null));
+      state = AsyncValue.data(
+        AuthState(user: user, phoneForOtp: null, hydrated: true),
+      );
     } on AppException catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     } catch (error, stackTrace) {
@@ -280,6 +293,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
         .readRefreshToken();
 
     if (storedAccess == null || storedAccess.isEmpty) {
+      state = AsyncValue.data(
+        const AuthState.initial().copyWith(hydrated: true),
+      );
       return;
     }
 
@@ -287,7 +303,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
 
     try {
       final me = await _authRepository.me();
-      state = AsyncValue.data(AuthState(user: me, phoneForOtp: null));
+      state = AsyncValue.data(
+        AuthState(user: me, phoneForOtp: null, hydrated: true),
+      );
     } on AppException {
       if (storedRefresh != null && storedRefresh.isNotEmpty) {
         try {
@@ -302,7 +320,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
                 .saveTokens(accessToken: access, refreshToken: refresh);
             _read.read(authTokenProvider.notifier).state = access;
             final me = await _authRepository.me();
-            state = AsyncValue.data(AuthState(user: me, phoneForOtp: null));
+            state = AsyncValue.data(
+              AuthState(user: me, phoneForOtp: null, hydrated: true),
+            );
             return;
           }
         } catch (_) {
@@ -326,7 +346,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
       await _read.read(secureStorageServiceProvider).clearTokens();
       _read.read(authTokenProvider.notifier).state = null;
       _lastOtpPhone = null;
-      state = const AsyncValue.data(AuthState.initial());
+      state = AsyncValue.data(
+        const AuthState.initial().copyWith(hydrated: true),
+      );
     } on AppException catch (error, stackTrace) {
       await _read.read(secureStorageServiceProvider).clearTokens();
       _read.read(authTokenProvider.notifier).state = null;
@@ -361,7 +383,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
         lastName: lastName,
         phoneNumber: phoneNumber,
       );
-      state = AsyncValue.data(AuthState(user: updated, phoneForOtp: null));
+      state = AsyncValue.data(
+        AuthState(user: updated, phoneForOtp: null, hydrated: true),
+      );
     } on AppException catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     } catch (error, stackTrace) {

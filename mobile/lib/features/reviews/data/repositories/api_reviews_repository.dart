@@ -62,6 +62,7 @@ class ApiReviewsRepository implements ReviewsRepository {
       bookingId: payload['booking']?.toString() ?? '',
       listingId: payload['listing']?.toString() ?? '',
       reviewerUserId: payload['guest_id']?.toString() ?? '',
+      reviewerName: payload['guest_name']?.toString(),
       hostUserId: payload['host_id']?.toString() ?? '',
       rating: payload['rating'] is int
           ? payload['rating'] as int

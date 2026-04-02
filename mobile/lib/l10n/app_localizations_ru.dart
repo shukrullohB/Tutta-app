@@ -42,7 +42,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get favoritesTitle => 'Избранное';
 
   @override
-  String get favoritesEmptyTitle => 'Здесь появятся ваши сохраненные варианты';
+  String get favoritesEmptyTitle => 'Здесь появятся ваши сохранённые варианты';
 
   @override
   String get favoritesEmptySubtitle =>

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'app_colors.dart';
+
 abstract final class AppTheme {
-  static const _background = Color(0xFFF8F6F1);
-  static const _surface = Color(0xFFFFFFFF);
-  static const _surfaceRaised = Color(0xFFF3F6F3);
-  static const _accent = Color(0xFF2F6C8F);
-  static const _secondary = Color(0xFFD38C52);
-  static const _text = Color(0xFF12203A);
+  static const _background = AppColors.background;
+  static const _surface = AppColors.surface;
+  static const _surfaceRaised = AppColors.surfaceTint;
+  static const _accent = AppColors.primary;
+  static const _secondary = AppColors.secondary;
+  static const _text = AppColors.text;
 
   static ThemeData get light {
     const colorScheme = ColorScheme(
@@ -15,21 +17,21 @@ abstract final class AppTheme {
       onPrimary: Colors.white,
       secondary: _secondary,
       onSecondary: Colors.white,
-      error: Color(0xFFD64545),
+      error: AppColors.danger,
       onError: Colors.white,
       surface: _surface,
       onSurface: _text,
       surfaceContainerHighest: _surfaceRaised,
-      onSurfaceVariant: Color(0xFF5D6C8A),
-      outline: Color(0xFFD4DEEE),
-      outlineVariant: Color(0xFFE5EBF6),
+      onSurfaceVariant: AppColors.textMuted,
+      outline: AppColors.borderStrong,
+      outlineVariant: AppColors.border,
       shadow: Colors.black,
       scrim: Colors.black,
-      inverseSurface: Color(0xFF0F1B2E),
+      inverseSurface: Color(0xFF3B2418),
       onInverseSurface: Colors.white,
-      inversePrimary: Color(0xFF8BC2CC),
-      tertiary: Color(0xFF81B29A),
-      onTertiary: Color(0xFF163127),
+      inversePrimary: AppColors.primarySoft,
+      tertiary: AppColors.secondarySoft,
+      onTertiary: AppColors.text,
     );
 
     return ThemeData(
@@ -49,39 +51,39 @@ abstract final class AppTheme {
         titleLarge: TextStyle(fontWeight: FontWeight.w700, color: _text),
         titleMedium: TextStyle(fontWeight: FontWeight.w600, color: _text),
         bodyMedium: TextStyle(height: 1.35, color: _text),
-        bodySmall: TextStyle(color: Color(0xFF6F7D99)),
+        bodySmall: TextStyle(color: AppColors.textMuted),
       ),
       dividerColor: const Color(0x1F102040),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF8FAFF),
+        fillColor: AppColors.surfaceSoft,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFDCE5F5)),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFDCE5F5)),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: _accent),
         ),
-        labelStyle: const TextStyle(color: Color(0xFF6F7D99)),
-        hintStyle: const TextStyle(color: Color(0xFF8A97AF)),
+        labelStyle: const TextStyle(color: AppColors.textMuted),
+        hintStyle: const TextStyle(color: AppColors.iconMuted),
       ),
       switchTheme: SwitchThemeData(
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const Color(0x663B7B94);
+            return const Color(0x66F15A24);
           }
-          return const Color(0x3398B9B1);
+          return const Color(0x33F2A120);
         }),
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return _accent;
           }
-          return const Color(0xFF8EA29E);
+          return AppColors.iconMuted;
         }),
       ),
       listTileTheme: const ListTileThemeData(
@@ -94,24 +96,24 @@ abstract final class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFE1E8F5)),
+          side: const BorderSide(color: AppColors.border),
         ),
       ),
       navigationBarTheme: const NavigationBarThemeData(
-        backgroundColor: Color(0xFFFFFFFF),
-        indicatorColor: Color(0x1A2F6C8F),
+        backgroundColor: AppColors.surface,
+        indicatorColor: Color(0x26F15A24),
         iconTheme: WidgetStatePropertyAll(
-          IconThemeData(color: Color(0xFF5D6C8A)),
+          IconThemeData(color: AppColors.textMuted),
         ),
         labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(color: Color(0xFF5D6C8A), fontWeight: FontWeight.w600),
+          TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600),
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: const Color(0xFFF2F5FC),
-        selectedColor: const Color(0x1F2F6C8F),
-        disabledColor: const Color(0xFFE7EDF8),
-        side: const BorderSide(color: Color(0xFFDCE5F5)),
+        backgroundColor: AppColors.surfaceTint,
+        selectedColor: const Color(0x26F15A24),
+        disabledColor: AppColors.primarySoft,
+        side: const BorderSide(color: AppColors.border),
         labelStyle: const TextStyle(color: _text, fontWeight: FontWeight.w500),
         secondaryLabelStyle: const TextStyle(color: _accent),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -135,7 +137,7 @@ abstract final class AppTheme {
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(double.infinity, 52),
           foregroundColor: _text,
-          side: const BorderSide(color: Color(0xFFDCE5F5)),
+          side: const BorderSide(color: AppColors.border),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),

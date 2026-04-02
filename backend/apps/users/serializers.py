@@ -20,6 +20,30 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'email', 'role', 'created_at')
 
 
+class PublicUserProfileSerializer(serializers.ModelSerializer):
+    active_listings_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'email',
+            'first_name',
+            'last_name',
+            'role',
+            'phone_number',
+            'created_at',
+            'active_listings_count',
+        )
+        read_only_fields = fields
+
+    def get_active_listings_count(self, obj):
+        return obj.listings.filter(
+            is_active=True,
+            moderation_status='approved',
+        ).count()
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True, min_length=8)

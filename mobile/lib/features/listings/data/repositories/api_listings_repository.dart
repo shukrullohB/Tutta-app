@@ -25,17 +25,18 @@ class ApiListingsRepository implements ListingsRepository {
       );
     }
 
+    final normalizedCity = params.city.split(',').first.trim();
+    final normalizedDistrict = params.district.trim();
+
     final result = await _apiClient.get(
       ApiEndpoints.listings,
       queryParameters: <String, dynamic>{
-        if (params.city.trim().isNotEmpty) 'city': params.city.trim(),
-        if (params.city.trim().isNotEmpty) 'q': params.city.trim(),
-        if (params.district.trim().isNotEmpty) 'district': params.district.trim(),
+        if (normalizedCity.isNotEmpty) 'city': normalizedCity,
+        if (normalizedDistrict.isNotEmpty) 'district': normalizedDistrict,
         'guests': params.guests,
         if (params.minPriceUzs != null) 'min_price': params.minPriceUzs,
         if (params.maxPriceUzs != null) 'max_price': params.maxPriceUzs,
-        if (params.types.isNotEmpty)
-          'type': _mapTypeToApi(params.types.first),
+        if (params.types.length == 1) 'type': _mapTypeToApi(params.types.first),
       },
     );
 
@@ -63,6 +64,29 @@ class ApiListingsRepository implements ListingsRepository {
         }
         _throwFailure(failure);
       },
+    );
+  }
+
+  @override
+  Future<List<Listing>> getByHost({
+    required String hostId,
+    required bool hasPremium,
+  }) async {
+    final result = await _apiClient.get(
+      ApiEndpoints.listings,
+      queryParameters: <String, dynamic>{'host': hostId},
+    );
+
+    return result.when(
+      success: (data) {
+        final items = ApiResponseParser.extractList(data)
+            .map(_mapListing)
+            .where((listing) => listing.isActive)
+            .where((listing) => hasPremium || listing.type != ListingType.freeStay)
+            .toList(growable: false);
+        return items;
+      },
+      failure: _throwFailure,
     );
   }
 
@@ -139,47 +163,49 @@ class ApiListingsRepository implements ListingsRepository {
     List<Listing> source, {
     required ListingSearchParams params,
   }) {
-    final city = params.city.trim().toLowerCase();
+    final city = params.city.split(',').first.trim().toLowerCase();
     final district = params.district.trim().toLowerCase();
 
-    return source.where((listing) {
-      if (!listing.isActive) {
-        return false;
-      }
-      if (!params.includeFreeStay && listing.type == ListingType.freeStay) {
-        return false;
-      }
-      if (city.isNotEmpty && !listing.city.toLowerCase().contains(city)) {
-        return false;
-      }
-      if (district.isNotEmpty &&
-          !listing.district.toLowerCase().contains(district)) {
-        return false;
-      }
-      if (params.guests > listing.maxGuests) {
-        return false;
-      }
-      if (params.types.isNotEmpty && !params.types.contains(listing.type)) {
-        return false;
-      }
-      if (params.amenities.isNotEmpty &&
-          !params.amenities.every(listing.amenities.contains)) {
-        return false;
-      }
-      if (listing.nightlyPriceUzs != null) {
-        if (params.minPriceUzs != null &&
-            listing.nightlyPriceUzs! < params.minPriceUzs!) {
-          return false;
-        }
-        if (params.maxPriceUzs != null &&
-            listing.nightlyPriceUzs! > params.maxPriceUzs!) {
-          return false;
-        }
-      } else if (params.minPriceUzs != null || params.maxPriceUzs != null) {
-        return false;
-      }
-      return true;
-    }).toList(growable: false);
+    return source
+        .where((listing) {
+          if (!listing.isActive) {
+            return false;
+          }
+          if (!params.includeFreeStay && listing.type == ListingType.freeStay) {
+            return false;
+          }
+          if (city.isNotEmpty && !listing.city.toLowerCase().contains(city)) {
+            return false;
+          }
+          if (district.isNotEmpty &&
+              !listing.district.toLowerCase().contains(district)) {
+            return false;
+          }
+          if (params.guests > listing.maxGuests) {
+            return false;
+          }
+          if (params.types.isNotEmpty && !params.types.contains(listing.type)) {
+            return false;
+          }
+          if (params.amenities.isNotEmpty &&
+              !params.amenities.every(listing.amenities.contains)) {
+            return false;
+          }
+          if (listing.nightlyPriceUzs != null) {
+            if (params.minPriceUzs != null &&
+                listing.nightlyPriceUzs! < params.minPriceUzs!) {
+              return false;
+            }
+            if (params.maxPriceUzs != null &&
+                listing.nightlyPriceUzs! > params.maxPriceUzs!) {
+              return false;
+            }
+          } else if (params.minPriceUzs != null || params.maxPriceUzs != null) {
+            return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
   }
 
   Listing _mapListing(Map<String, dynamic> payload) {
@@ -192,7 +218,8 @@ class ApiListingsRepository implements ListingsRepository {
         : split.isNotEmpty && split.first.isNotEmpty
         ? split.first
         : 'Unknown';
-    final district = (payload['district']?.toString().trim().isNotEmpty ?? false)
+    final district =
+        (payload['district']?.toString().trim().isNotEmpty ?? false)
         ? payload['district']!.toString().trim()
         : split.length > 1 && split[1].isNotEmpty
         ? split[1]
@@ -201,33 +228,140 @@ class ApiListingsRepository implements ListingsRepository {
     final rawPrice = payload['price_per_night'];
     final price = rawPrice is num
         ? rawPrice.toInt()
-        : int.tryParse(rawPrice?.toString() ?? '');
+        : double.tryParse(rawPrice?.toString() ?? '')?.round();
     final images = (payload['images'] is List)
         ? (payload['images'] as List)
-              .whereType<Map<String, dynamic>>()
-              .map((item) => _normalizeImageUrl(item['image']?.toString() ?? ''))
+              .map((item) {
+                if (item is Map<String, dynamic>) {
+                  return _normalizeImageUrl(item['image']?.toString() ?? '');
+                }
+                return _normalizeImageUrl(item?.toString() ?? '');
+              })
               .where((url) => url.isNotEmpty)
               .toList(growable: false)
         : const <String>[];
+    final resolvedType = _mapTypeFromApi(rawType);
+    final resolvedImages = images.isEmpty
+        ? _fallbackAssetImages(
+            id: id,
+            title: payload['title']?.toString() ?? '',
+          )
+        : images;
+    final resolvedAmenities = _fallbackAmenities(
+      title: payload['title']?.toString() ?? '',
+      type: resolvedType,
+    );
 
     return Listing(
       id: id,
       hostId: hostId,
+      hostName: payload['host_name']?.toString().trim(),
+      hostPhone: payload['host_phone']?.toString().trim(),
       title: payload['title']?.toString() ?? 'Listing',
       city: city,
       district: district,
-      type: _mapTypeFromApi(rawType),
-      maxGuests: payload['max_guests'] is int ? payload['max_guests'] as int : 1,
+      type: resolvedType,
+      maxGuests: payload['max_guests'] is int
+          ? payload['max_guests'] as int
+          : 1,
       minDays: payload['min_days'] is int ? payload['min_days'] as int : 1,
       maxDays: payload['max_days'] is int ? payload['max_days'] as int : 30,
       nightlyPriceUzs: price,
-      isActive: payload['is_active'] == true,
-      amenities: const <ListingAmenity>[],
-      imageUrls: images,
+      isActive: payload['is_active'] != false,
+      amenities: resolvedAmenities,
+      imageUrls: resolvedImages,
       description: payload['description']?.toString(),
       landmark: payload['landmark']?.toString(),
       metro: payload['metro']?.toString(),
     );
+  }
+
+  List<String> _fallbackAssetImages({
+    required String id,
+    required String title,
+  }) {
+    const all = <String>[
+      'assets/images/home1.png',
+      'assets/images/home2.png',
+      'assets/images/home3.png',
+      'assets/images/home4.png',
+    ];
+
+    final normalizedTitle = title.toLowerCase();
+    if (normalizedTitle.contains('cozy')) {
+      return const <String>[
+        'assets/images/home1.png',
+        'assets/images/home2.png',
+        'assets/images/home4.png',
+      ];
+    }
+    if (normalizedTitle.contains('loft')) {
+      return const <String>[
+        'assets/images/home2.png',
+        'assets/images/home3.png',
+        'assets/images/home1.png',
+      ];
+    }
+    if (normalizedTitle.contains('family')) {
+      return const <String>[
+        'assets/images/home4.png',
+        'assets/images/home1.png',
+        'assets/images/home2.png',
+      ];
+    }
+    if (normalizedTitle.contains('room')) {
+      return const <String>[
+        'assets/images/home3.png',
+        'assets/images/home2.png',
+      ];
+    }
+
+    final hash = id.codeUnits.fold<int>(0, (sum, item) => sum + item);
+    final start = hash % all.length;
+    return List<String>.generate(
+      3,
+      (index) => all[(start + index) % all.length],
+      growable: false,
+    );
+  }
+
+  List<ListingAmenity> _fallbackAmenities({
+    required String title,
+    required ListingType type,
+  }) {
+    final normalizedTitle = title.toLowerCase();
+    final amenities = <ListingAmenity>{
+      ListingAmenity.wifi,
+      ListingAmenity.kitchen,
+    };
+
+    if (type == ListingType.apartment || type == ListingType.homePart) {
+      amenities.addAll(<ListingAmenity>{
+        ListingAmenity.airConditioner,
+        ListingAmenity.washingMachine,
+      });
+    }
+
+    if (normalizedTitle.contains('family')) {
+      amenities.addAll(<ListingAmenity>{
+        ListingAmenity.kidsAllowed,
+        ListingAmenity.privateBathroom,
+      });
+    }
+
+    if (normalizedTitle.contains('loft')) {
+      amenities.add(ListingAmenity.instantConfirm);
+    }
+
+    if (normalizedTitle.contains('room')) {
+      amenities.add(ListingAmenity.hostLivesTogether);
+    }
+
+    if (type == ListingType.room) {
+      amenities.add(ListingAmenity.privateBathroom);
+    }
+
+    return amenities.toList(growable: false);
   }
 
   String _normalizeImageUrl(String raw) {
@@ -254,7 +388,7 @@ class ApiListingsRepository implements ListingsRepository {
       case 'room':
         return ListingType.room;
       case 'home':
-        return ListingType.homePart;
+        return ListingType.apartment;
       case 'free_stay':
         return ListingType.freeStay;
       default:
@@ -285,16 +419,20 @@ class ApiListingsRepository implements ListingsRepository {
 
   @override
   Future<List<AvailabilityDay>> getAvailability(String listingId) async {
-    final result = await _apiClient.get(ApiEndpoints.listingAvailability(listingId));
+    final result = await _apiClient.get(
+      ApiEndpoints.listingAvailability(listingId),
+    );
     return result.when(
       success: (data) {
         final items = ApiResponseParser.extractList(data);
         return items
-            .map((item) => AvailabilityDay(
-                  date: DateTime.parse(item['date'].toString()),
-                  isAvailable: item['is_available'] == true,
-                  note: item['note']?.toString(),
-                ))
+            .map(
+              (item) => AvailabilityDay(
+                date: DateTime.parse(item['date'].toString()),
+                isAvailable: item['is_available'] == true,
+                note: item['note']?.toString(),
+              ),
+            )
             .toList(growable: false);
       },
       failure: _throwFailure,
@@ -314,7 +452,8 @@ class ApiListingsRepository implements ListingsRepository {
               (day) => <String, dynamic>{
                 'date': day.date.toIso8601String().split('T').first,
                 'is_available': day.isAvailable,
-                if ((day.note ?? '').trim().isNotEmpty) 'note': day.note!.trim(),
+                if ((day.note ?? '').trim().isNotEmpty)
+                  'note': day.note!.trim(),
               },
             )
             .toList(growable: false),
@@ -324,11 +463,13 @@ class ApiListingsRepository implements ListingsRepository {
       success: (data) {
         final items = ApiResponseParser.extractList(data);
         return items
-            .map((item) => AvailabilityDay(
-                  date: DateTime.parse(item['date'].toString()),
-                  isAvailable: item['is_available'] == true,
-                  note: item['note']?.toString(),
-                ))
+            .map(
+              (item) => AvailabilityDay(
+                date: DateTime.parse(item['date'].toString()),
+                isAvailable: item['is_available'] == true,
+                note: item['note']?.toString(),
+              ),
+            )
             .toList(growable: false);
       },
       failure: _throwFailure,

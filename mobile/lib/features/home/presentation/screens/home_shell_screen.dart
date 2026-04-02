@@ -1,20 +1,73 @@
 import '../../../../app/app.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../l10n/app_localizations.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../core/l10n/ru_fallbacks.dart';
 import '../../../../core/enums/app_role.dart';
-import '../../../../core/widgets/empty_state_view.dart';
 import '../../../auth/application/auth_controller.dart';
+import '../../../auth/domain/models/auth_user.dart';
 import '../../../bookings/application/booking_request_controller.dart';
-import '../../../chat/application/chat_provider.dart';
+import '../../../bookings/domain/models/booking.dart';
+import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../listings/application/search_controller.dart';
 import '../../../listings/domain/models/listing.dart';
+import '../../../listings/domain/models/listing_search_params.dart';
 import '../../../wishlist/application/favorites_controller.dart';
 import '../../application/app_session_controller.dart';
+
+final _homeExploreListingsProvider = FutureProvider<List<Listing>>((ref) async {
+  final hasPremium =
+      ref.watch(authControllerProvider).valueOrNull?.user?.isPremium ?? false;
+  final items = await ref
+      .watch(listingsRepositoryProvider)
+      .search(
+        params: const ListingSearchParams(
+          city: 'Tashkent',
+          district: '',
+          guests: 1,
+          includeFreeStay: false,
+        ),
+        hasPremium: hasPremium,
+      );
+  if (hasPremium) {
+    return items;
+  }
+  return items
+      .where((listing) => listing.type != ListingType.freeStay)
+      .toList(growable: false);
+});
+
+final _homeFavoriteListingsProvider = FutureProvider<List<Listing>>((
+  ref,
+) async {
+  final favoriteIds = ref.watch(favoritesIdsProvider);
+  if (favoriteIds.isEmpty) {
+    return const <Listing>[];
+  }
+
+  final repository = ref.watch(listingsRepositoryProvider);
+  final items = await Future.wait(favoriteIds.map(repository.getById));
+  return items.whereType<Listing>().toList(growable: false);
+});
+
+final _guestBookingsProvider = FutureProvider<List<Booking>>((ref) async {
+  final user = ref.watch(authControllerProvider).valueOrNull?.user;
+  if (user == null) {
+    return const <Booking>[];
+  }
+  return ref.watch(bookingRepositoryProvider).getGuestBookings(user.id);
+});
+
+final _hostBookingsProvider = FutureProvider<List<Booking>>((ref) async {
+  final user = ref.watch(authControllerProvider).valueOrNull?.user;
+  if (user == null) {
+    return const <Booking>[];
+  }
+  return ref.watch(bookingRepositoryProvider).getHostBookings(user.id);
+});
 
 class HomeShellScreen extends ConsumerStatefulWidget {
   const HomeShellScreen({super.key});
@@ -33,45 +86,93 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
 
     if (role == null) {
       return Scaffold(
-        body: EmptyStateView(
-          title: _shellText(
-            context,
-            en: 'Role is not selected',
-            ru: 'Р РѕР»СЊ РЅРµ РІС‹Р±СЂР°РЅР°',
-            uz: 'Rol tanlanmagan',
+        appBar: AppBar(
+          title: Text(
+            _copy(
+              context,
+              en: 'Choose mode',
+              ru: 'Выберите режим',
+              uz: 'Rejimni tanlang',
+            ),
           ),
-          subtitle: _shellText(
-            context,
-            en: 'Please choose renter or host mode.',
-            ru: 'РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РІС‹Р±РµСЂРёС‚Рµ СЂРµР¶РёРј Р°СЂРµРЅРґР°С‚РѕСЂР° РёР»Рё С…РѕР·СЏРёРЅР°.',
-            uz: 'Iltimos, mehmon yoki host rejimini tanlang.',
+          actions: const [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: LanguageSelector(),
+            ),
+          ],
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.swap_horiz_rounded,
+                  size: 48,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _copy(
+                    context,
+                    en: 'Please choose renter or host mode to continue.',
+                    ru: 'Пожалуйста, выберите режим гостя или хоста, чтобы продолжить.',
+                    uz: 'Davom etish uchun mehmon yoki host rejimini tanlang.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: () => context.go(RouteNames.roleSelector),
+                  child: Text(
+                    _copy(
+                      context,
+                      en: 'Open role selector',
+                      ru: 'Открыть выбор роли',
+                      uz: 'Rol tanlashni ochish',
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    final tabs = _tabsForRole(context, role);
+    final tabs = _tabsForRole(role);
     final destinations = _destinationsForRole(context, role);
+    final selectedIndex = _index >= tabs.length ? 0 : _index;
 
-    if (_index >= tabs.length) {
-      _index = 0;
+    if (selectedIndex != _index) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() => _index = selectedIndex);
+        }
+      });
     }
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          role == AppRole.renter
-              ? _shellText(
-                  context,
-                  en: 'Tutta Renter',
-                  ru: 'Tutta РђСЂРµРЅРґР°С‚РѕСЂ',
-                  uz: 'Tutta Mehmon',
-                )
-              : _shellText(
+          role == AppRole.host
+              ? _copy(
                   context,
                   en: 'Tutta Host',
-                  ru: 'Tutta РҐРѕР·СЏРёРЅ',
+                  ru: 'Tutta Хост',
                   uz: 'Tutta Host',
+                )
+              : _copy(
+                  context,
+                  en: 'Tutta Renter',
+                  ru: 'Tutta Арендатор',
+                  uz: 'Tutta Mehmon',
                 ),
         ),
         actions: [
@@ -80,144 +181,61 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
             child: LanguageSelector(),
           ),
           IconButton(
-            tooltip: 'Switch role',
-            onPressed: () {
-              ref.read(appSessionControllerProvider.notifier).clearRole();
-              context.go(RouteNames.roleSelector);
-            },
-            icon: const Icon(Icons.swap_horiz),
+            tooltip: _copy(
+              context,
+              en: 'Choose role',
+              ru: 'Сменить роль',
+              uz: 'Rolni almashtirish',
+            ),
+            onPressed: _showRoleSwitcher,
+            icon: const Icon(Icons.swap_horiz_rounded),
           ),
           IconButton(
-            tooltip: 'Sign out',
-            onPressed: () async {
-              await ref.read(authControllerProvider.notifier).signOut();
-              await ref
-                  .read(appSessionControllerProvider.notifier)
-                  .resetForFirstLaunch();
-              if (context.mounted) {
-                context.go(RouteNames.onboarding);
-              }
-            },
-            icon: const Icon(Icons.logout),
+            tooltip: _copy(context, en: 'Sign out', ru: 'Выйти', uz: 'Chiqish'),
+            onPressed: _signOut,
+            icon: const Icon(Icons.logout_rounded),
           ),
         ],
       ),
-      body: AnimatedSwitcher(
-        duration: 280.ms,
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        child: KeyedSubtree(
-          key: ValueKey('tab-$role-$_index'),
-          child: tabs[_index],
-        ),
-      ),
+      body: IndexedStack(index: selectedIndex, children: tabs),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
+        selectedIndex: selectedIndex,
         onDestinationSelected: (value) => setState(() => _index = value),
         destinations: destinations,
       ),
+      floatingActionButton: role == AppRole.host && selectedIndex == 1
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push(RouteNames.createListing),
+              icon: const Icon(Icons.add_home_work_outlined),
+              label: Text(
+                _copy(
+                  context,
+                  en: 'New listing',
+                  ru: 'Новое объявление',
+                  uz: 'Yangi e\'lon',
+                ),
+              ),
+            )
+          : null,
     );
   }
 
-  List<Widget> _tabsForRole(BuildContext context, AppRole role) {
-    if (role == AppRole.host) {
-      return [
-        _HomeTab(
-          title: _shellText(
-            context,
-            en: 'Host Dashboard',
-            ru: 'РџР°РЅРµР»СЊ С…РѕСЃС‚Р°',
-            uz: 'Host paneli',
-          ),
-          subtitle: _shellText(
-            context,
-            en: 'Manage listings, requests, and occupancy.',
-            ru: 'РЈРїСЂР°РІР»СЏР№С‚Рµ РѕР±СЉСЏРІР»РµРЅРёСЏРјРё, Р·Р°СЏРІРєР°РјРё Рё Р·Р°РЅСЏС‚РѕСЃС‚СЊСЋ.',
-            uz: 'E\'lonlar, so\'rovlar va bandlikni boshqaring.',
-          ),
-        ),
-        _HostListingsTab(
-          title: _shellText(
-            context,
-            en: 'My Listings',
-            ru: 'РњРѕРё РѕР±СЉСЏРІР»РµРЅРёСЏ',
-            uz: 'Mening e\'lonlarim',
-          ),
-          subtitle: _shellText(
-            context,
-            en: 'Create and update your listings in one place.',
-            ru: 'РЎРѕР·РґР°РІР°Р№С‚Рµ Рё РѕР±РЅРѕРІР»СЏР№С‚Рµ РѕР±СЉСЏРІР»РµРЅРёСЏ РІ РѕРґРЅРѕРј РјРµСЃС‚Рµ.',
-            uz: 'E\'lonlarni bir joyda yarating va yangilang.',
-          ),
-        ),
-        _HostRequestsEntryTab(
-          title: _shellText(
-            context,
-            en: 'Requests',
-            ru: 'Р—Р°СЏРІРєРё',
-            uz: 'So\'rovlar',
-          ),
-          subtitle: _shellText(
-            context,
-            en: 'Approve or decline booking requests in one place.',
-            ru: 'РџСЂРёРЅРёРјР°Р№С‚Рµ РёР»Рё РѕС‚РєР»РѕРЅСЏР№С‚Рµ Р·Р°СЏРІРєРё РІ РѕРґРЅРѕРј РјРµСЃС‚Рµ.',
-            uz: 'Bron so\'rovlarini shu yerda tasdiqlang yoki rad eting.',
-          ),
-        ),
-        _ChatEntryTab(
-          title: _shellText(
-            context,
-            en: 'Chats',
-            ru: 'Р§Р°С‚С‹',
-            uz: 'Chatlar',
-          ),
-          subtitle: _shellText(
-            context,
-            en: 'Talk to your guests in real time.',
-            ru: 'РћР±С‰Р°Р№С‚РµСЃСЊ СЃ РіРѕСЃС‚СЏРјРё РІ СЂРµР°Р»СЊРЅРѕРј РІСЂРµРјРµРЅРё.',
-            uz: 'Mehmonlar bilan real vaqtda yozishing.',
-          ),
-        ),
-        _ProfileHomeTab(),
-      ];
-    }
-
-    return [
-      _RenterHomeTab(),
-      _FavoritesEntryTab(
-        title: AppLocalizations.of(context).favoritesTitle,
-        subtitle: _shellText(
-          context,
-          en: 'Saved listings and host profiles.',
-          ru: 'РЎРѕС…СЂР°РЅРµРЅРЅС‹Рµ РѕР±СЉСЏРІР»РµРЅРёСЏ Рё РїСЂРѕС„РёР»Рё С…РѕР·СЏРµРІ.',
-          uz: 'Saqlangan e\'lonlar va host profillari.',
-        ),
-      ),
-      _BookingsEntryTab(
-        title: _shellText(
-          context,
-          en: 'Bookings',
-          ru: 'Р‘СЂРѕРЅРёСЂРѕРІР°РЅРёСЏ',
-          uz: 'Bronlar',
-        ),
-        subtitle: _shellText(
-          context,
-          en: 'Track requests and upcoming stays in Uzbekistan.',
-          ru: 'РЎР»РµРґРёС‚Рµ Р·Р° Р·Р°СЏРІРєР°РјРё Рё РїСЂРµРґСЃС‚РѕСЏС‰РёРјРё РїРѕРµР·РґРєР°РјРё РїРѕ РЈР·Р±РµРєРёСЃС‚Р°РЅСѓ.',
-          uz: 'So\'rovlar va yaqin safarlarni shu yerda kuzating.',
-        ),
-      ),
-      _ChatEntryTab(
-        title: _shellText(context, en: 'Chats', ru: 'Р§Р°С‚С‹', uz: 'Chatlar'),
-        subtitle: _shellText(
-          context,
-          en: 'Talk to hosts before booking.',
-          ru: 'РћР±С‰Р°Р№С‚РµСЃСЊ СЃ С…РѕР·СЏРµРІР°РјРё РґРѕ Р±СЂРѕРЅРёСЂРѕРІР°РЅРёСЏ.',
-          uz: 'Bron qilishdan oldin hostlar bilan yozishing.',
-        ),
-      ),
-      _ProfileHomeTab(),
-    ];
+  List<Widget> _tabsForRole(AppRole role) {
+    return role == AppRole.host
+        ? <Widget>[
+            const _HostDashboardTab(),
+            const _HostListingsTab(),
+            const _BookingsTab(role: AppRole.host),
+            const ChatListScreen(embedded: true),
+            _ProfileTab(onSignOut: _signOut, onSwitchRole: _showRoleSwitcher),
+          ]
+        : <Widget>[
+            const _ExploreTab(),
+            const _FavoritesTab(),
+            const _BookingsTab(role: AppRole.renter),
+            const ChatListScreen(embedded: true),
+            _ProfileTab(onSignOut: _signOut, onSwitchRole: _showRoleSwitcher),
+          ];
   }
 
   List<NavigationDestination> _destinationsForRole(
@@ -225,940 +243,1163 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
     AppRole role,
   ) {
     if (role == AppRole.host) {
-      return [
+      return <NavigationDestination>[
         NavigationDestination(
-          icon: Icon(Icons.dashboard_outlined),
-          label: _shellText(
-            context,
-            en: 'Dashboard',
-            ru: 'РџР°РЅРµР»СЊ',
-            uz: 'Panel',
-          ),
+          icon: const Icon(Icons.dashboard_outlined),
+          selectedIcon: const Icon(Icons.dashboard_rounded),
+          label: _copy(context, en: 'Dashboard', ru: 'Панель', uz: 'Panel'),
         ),
         NavigationDestination(
-          icon: Icon(Icons.home_work_outlined),
-          label: _shellText(
+          icon: const Icon(Icons.home_work_outlined),
+          selectedIcon: const Icon(Icons.home_work_rounded),
+          label: _copy(
             context,
             en: 'Listings',
-            ru: 'РћР±СЉСЏРІР»РµРЅРёСЏ',
+            ru: 'Объявления',
             uz: 'E\'lonlar',
           ),
         ),
         NavigationDestination(
-          icon: Icon(Icons.assignment_turned_in_outlined),
-          label: _shellText(
-            context,
-            en: 'Requests',
-            ru: 'Р—Р°СЏРІРєРё',
-            uz: 'So\'rovlar',
-          ),
+          icon: const Icon(Icons.calendar_month_outlined),
+          selectedIcon: const Icon(Icons.calendar_month_rounded),
+          label: _copy(context, en: 'Bookings', ru: 'Брони', uz: 'Bronlar'),
         ),
         NavigationDestination(
-          icon: Icon(Icons.chat_bubble_outline),
-          label: _shellText(
-            context,
-            en: 'Chats',
-            ru: 'Р§Р°С‚С‹',
-            uz: 'Chatlar',
-          ),
+          icon: const Icon(Icons.chat_bubble_outline_rounded),
+          selectedIcon: const Icon(Icons.chat_bubble_rounded),
+          label: _copy(context, en: 'Chats', ru: 'Чаты', uz: 'Chatlar'),
         ),
         NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          label: _shellText(
-            context,
-            en: 'Profile',
-            ru: 'РџСЂРѕС„РёР»СЊ',
-            uz: 'Profil',
-          ),
+          icon: const Icon(Icons.person_outline_rounded),
+          selectedIcon: const Icon(Icons.person_rounded),
+          label: _copy(context, en: 'Profile', ru: 'Профиль', uz: 'Profil'),
         ),
       ];
     }
 
-    return [
+    return <NavigationDestination>[
       NavigationDestination(
-        icon: const Icon(Icons.travel_explore),
-        label: _shellText(
-          context,
-          en: 'Explore',
-          ru: 'РџРѕРёСЃРє',
-          uz: 'Qidiruv',
-        ),
+        icon: const Icon(Icons.travel_explore_outlined),
+        selectedIcon: const Icon(Icons.travel_explore_rounded),
+        label: _copy(context, en: 'Explore', ru: 'Поиск', uz: 'Qidiruv'),
       ),
       NavigationDestination(
-        icon: const Icon(Icons.favorite_border),
-        label: AppLocalizations.of(context).favoritesTitle,
+        icon: const Icon(Icons.favorite_outline_rounded),
+        selectedIcon: const Icon(Icons.favorite_rounded),
+        label: _copy(
+          context,
+          en: 'Favorites',
+          ru: 'Избранное',
+          uz: 'Sevimlilar',
+        ),
       ),
       NavigationDestination(
         icon: const Icon(Icons.calendar_month_outlined),
-        label: _shellText(
-          context,
-          en: 'Bookings',
-          ru: 'Р‘СЂРѕРЅРё',
-          uz: 'Bronlar',
-        ),
+        selectedIcon: const Icon(Icons.calendar_month_rounded),
+        label: _copy(context, en: 'Bookings', ru: 'Брони', uz: 'Bronlar'),
       ),
       NavigationDestination(
-        icon: const Icon(Icons.chat_bubble_outline),
-        label: _shellText(context, en: 'Chats', ru: 'Р§Р°С‚С‹', uz: 'Chatlar'),
+        icon: const Icon(Icons.chat_bubble_outline_rounded),
+        selectedIcon: const Icon(Icons.chat_bubble_rounded),
+        label: _copy(context, en: 'Chats', ru: 'Чаты', uz: 'Chatlar'),
       ),
       NavigationDestination(
-        icon: const Icon(Icons.person_outline),
-        label: _shellText(
-          context,
-          en: 'Profile',
-          ru: 'РџСЂРѕС„РёР»СЊ',
-          uz: 'Profil',
-        ),
+        icon: const Icon(Icons.person_outline_rounded),
+        selectedIcon: const Icon(Icons.person_rounded),
+        label: _copy(context, en: 'Profile', ru: 'Профиль', uz: 'Profil'),
       ),
     ];
   }
-}
 
-class _RenterHomeTab extends ConsumerStatefulWidget {
-  const _RenterHomeTab();
+  Future<void> _showRoleSwitcher() async {
+    final currentRole = ref.read(appSessionControllerProvider).activeRole;
+    if (currentRole == null || !mounted) {
+      if (mounted) {
+        context.go(RouteNames.roleSelector);
+      }
+      return;
+    }
 
-  @override
-  ConsumerState<_RenterHomeTab> createState() => _RenterHomeTabState();
-}
-
-class _RenterHomeTabState extends ConsumerState<_RenterHomeTab> {
-  String _locationLabel = 'Anywhere';
-  String _weekLabel = 'Any week';
-
-  Future<void> _pickLocation() async {
-    final search = ref.read(searchControllerProvider.notifier);
-    final picked = await showModalBottomSheet<String>(
+    final selectedRole = await showModalBottomSheet<AppRole>(
       context: context,
-      builder: (context) {
-        const cities = <String>[
-          'Tashkent',
-          'Samarkand',
-          'Bukhara',
-          'Andijan',
-          'Namangan',
-          'Fergana',
-        ];
+      showDragHandle: true,
+      backgroundColor: AppColors.surfaceSoft,
+      builder: (sheetContext) {
         return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: cities
-                .map(
-                  (city) => ListTile(
-                    leading: const Icon(Icons.place_outlined),
-                    title: Text(city),
-                    onTap: () => Navigator.of(context).pop(city),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-        );
-      },
-    );
-
-    if (picked == null || !mounted) {
-      return;
-    }
-    setState(() => _locationLabel = picked);
-    search.setCity(picked);
-    await search.search();
-    if (mounted) {
-      context.go(RouteNames.search);
-    }
-  }
-
-  Future<void> _pickWeek() async {
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: now.add(const Duration(days: 365)),
-      helpText: 'Select stay dates',
-    );
-    if (picked == null || !mounted) {
-      return;
-    }
-    final nights = picked.end.difference(picked.start).inDays;
-    if (nights > 30) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Maximum stay is 30 nights. Please choose shorter dates.',
-          ),
-        ),
-      );
-      return;
-    }
-    setState(() {
-      _weekLabel =
-          '${picked.start.day}.${picked.start.month} - ${picked.end.day}.${picked.end.month}';
-    });
-    context.go(RouteNames.search);
-  }
-
-  void _openQuickMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.search_outlined),
-                title: Text(
-                  _shellText(
-                    context,
-                    en: 'Search stays',
-                    ru: 'РСЃРєР°С‚СЊ Р¶РёР»СЊРµ',
-                    uz: 'Uy qidirish',
-                  ),
-                ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  this.context.go(RouteNames.search);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.favorite_border),
-                title: Text(AppLocalizations.of(context).favoritesTitle),
-                onTap: () => Navigator.of(context).pop(),
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings_outlined),
-                title: Text(AppLocalizations.of(context).settingsTitle),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  this.context.go(RouteNames.settings);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(14, 10, 14, 22),
-        children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: _openQuickMenu,
-                icon: const Icon(Icons.menu, color: Color(0xFF2E5E5A)),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'Tutta',
-                style: TextStyle(
-                  color: Color(0xFF234B56),
-                  fontSize: 34 / 2,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () => context.go(RouteNames.settings),
-                icon: const CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Color(0xFFF3CDAD),
-                  child: Icon(Icons.person, size: 16, color: Color(0xFF9A6D4B)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2F6C8F), Color(0xFF59A6A6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x2259A6A6),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
-                ),
-              ],
-            ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Find your next stay in Uzbekistan',
-                  style: TextStyle(
-                    color: Colors.white,
+                Text(
+                  _copy(
+                    sheetContext,
+                    en: 'Choose role',
+                    ru: 'Выберите роль',
+                    uz: 'Rolni tanlang',
+                  ),
+                  style: const TextStyle(
+                    color: AppColors.text,
                     fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    height: 1.2,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Verified hosts, short-term only, and booking flow built for local travel.',
-                  style: TextStyle(color: Color(0xE6FFFFFF), height: 1.35),
+                Text(
+                  _copy(
+                    sheetContext,
+                    en: 'Use renter mode to book stays and host mode to manage your listings.',
+                    ru: 'Режим гостя нужен для бронирования, а режим хозяина — для управления объявлениями.',
+                    uz: 'Mehmon rejimi bron qilish uchun, host rejimi esa e\'lonlarni boshqarish uchun kerak.',
+                  ),
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    height: 1.4,
+                  ),
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.tonalIcon(
-                        onPressed: () => context.go(RouteNames.search),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF2F6C8F),
-                          minimumSize: const Size.fromHeight(44),
-                        ),
-                        icon: const Icon(Icons.search),
-                        label: const Text('Explore homes'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          final search = ref.read(
-                            searchControllerProvider.notifier,
-                          );
-                          search.setIncludeFreeStay(true);
-                          search.search();
-                          context.go(RouteNames.search);
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0x66FFFFFF)),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(44),
-                        ),
-                        icon: const Icon(Icons.swap_horiz),
-                        label: const Text('Free Stay'),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 18),
+                _RoleChoiceCard(
+                  icon: Icons.travel_explore_rounded,
+                  title: _copy(
+                    sheetContext,
+                    en: 'Renter mode',
+                    ru: 'Режим гостя',
+                    uz: 'Mehmon rejimi',
+                  ),
+                  subtitle: _copy(
+                    sheetContext,
+                    en: 'Search, save, chat, and request bookings.',
+                    ru: 'Ищите жильё, сохраняйте варианты, общайтесь и отправляйте заявки на бронь.',
+                    uz: 'Turar joy qidiring, saqlang, yozing va bron so\'rovlari yuboring.',
+                  ),
+                  selected: currentRole == AppRole.renter,
+                  onTap: () => Navigator.of(sheetContext).pop(AppRole.renter),
+                ),
+                const SizedBox(height: 12),
+                _RoleChoiceCard(
+                  icon: Icons.home_work_rounded,
+                  title: _copy(
+                    sheetContext,
+                    en: 'Host mode',
+                    ru: 'Режим хозяина',
+                    uz: 'Host rejimi',
+                  ),
+                  subtitle: _copy(
+                    sheetContext,
+                    en: 'Manage listings, chats, availability, and guest requests.',
+                    ru: 'Управляйте объявлениями, чатами, календарём и заявками гостей.',
+                    uz: 'E\'lonlar, chatlar, mavjudlik va mehmon so\'rovlarini boshqaring.',
+                  ),
+                  selected: currentRole == AppRole.host,
+                  onTap: () => Navigator.of(sheetContext).pop(AppRole.host),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _QuickCityChip(
-                  label: 'Tashkent',
-                  onTap: () {
-                    final search = ref.read(searchControllerProvider.notifier);
-                    search.setCity('Tashkent');
-                    search.search();
-                    context.go(RouteNames.search);
-                  },
-                ),
-                _QuickCityChip(
-                  label: 'Samarkand',
-                  onTap: () {
-                    final search = ref.read(searchControllerProvider.notifier);
-                    search.setCity('Samarkand');
-                    search.search();
-                    context.go(RouteNames.search);
-                  },
-                ),
-                _QuickCityChip(
-                  label: 'Bukhara',
-                  onTap: () {
-                    final search = ref.read(searchControllerProvider.notifier);
-                    search.setCity('Bukhara');
-                    search.search();
-                    context.go(RouteNames.search);
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: () => context.go(RouteNames.search),
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              height: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE9EAEE),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: const Row(
-                children: [
-                  Icon(Icons.search, color: Color(0xFF6E7585)),
-                  SizedBox(width: 10),
-                  Text(
-                    'Where to?',
-                    style: TextStyle(
-                      color: Color(0xFF6E7585),
-                      fontSize: 18 / 1.2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _HomePill(
-                  icon: Icons.place_outlined,
-                  label: _locationLabel,
-                  onTap: _pickLocation,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _HomePill(
-                  icon: Icons.calendar_month_outlined,
-                  label: _weekLabel,
-                  onTap: _pickWeek,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _SegmentTile(
-                label: 'HOMES',
-                icon: Icons.home,
-                active: true,
-                width: 112,
-                onTap: () {
-                  final search = ref.read(searchControllerProvider.notifier);
-                  search.setTypes(const <ListingType>[
-                    ListingType.apartment,
-                    ListingType.homePart,
-                  ]);
-                  search.search();
-                  context.go(RouteNames.search);
-                },
-              ),
-              const SizedBox(width: 10),
-              _SegmentTile(
-                label: 'ROOMS',
-                icon: Icons.bed_outlined,
-                width: 112,
-                onTap: () {
-                  final search = ref.read(searchControllerProvider.notifier);
-                  search.setTypes(const <ListingType>[ListingType.room]);
-                  search.search();
-                  context.go(RouteNames.search);
-                },
-              ),
-              const SizedBox(width: 10),
-              _SegmentTile(
-                label: 'SKILL\nEXCHANGE',
-                icon: Icons.swap_horiz,
-                width: 120,
-                onTap: () {
-                  final search = ref.read(searchControllerProvider.notifier);
-                  search.setIncludeFreeStay(true);
-                  search.search();
-                  context.go(RouteNames.search);
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'CURATED SELECTION',
-            style: TextStyle(
-              color: Color(0xC89A6B1C),
-              letterSpacing: 2.2,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Text(
-                'Featured Stays',
-                style: TextStyle(
-                  color: Color(0xFF072A73),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 44 / 2,
-                ),
-              ),
-              const Spacer(),
-              InkWell(
-                onTap: () => context.go(RouteNames.search),
-                child: const Row(
-                  children: [
-                    Text(
-                      'View all',
-                      style: TextStyle(
-                        color: Color(0xFF072A73),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward,
-                      size: 16,
-                      color: Color(0xFF072A73),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const _FeaturedStayCard(
-            listingId: 'l1',
-            title: 'Amirsoy Mountain Chalet',
-            location: 'Tashkent Region, Uzbekistan',
-            price: '1 350 000 UZS / night',
-            rating: '4.92',
-            imageAssetPath: 'assets/images/home1.png',
-          ),
-          const SizedBox(height: 12),
-          const _FeaturedStayCard(
-            listingId: 'l4',
-            title: 'Modern Loft in Mirobod',
-            location: 'Mirobod, Tashkent',
-            price: '510 000 UZS / night',
-            rating: '4.85',
-            imageAssetPath: 'assets/images/home2.png',
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Nearby Gems',
-            style: TextStyle(
-              color: Color(0xFF072A73),
-              fontWeight: FontWeight.w700,
-              fontSize: 44 / 2,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const _NearbyCard(
-            listingId: 'l3',
-            title: 'Samarkand Courtyard Flat',
-            subtitle: 'Samarkand вЂў 3 nights',
-            price: '850 000 UZS / night',
-            rating: '4.95',
-            imageAssetPath: 'assets/images/home2.png',
-            color: Color(0xFF5B8F86),
-          ),
-          const SizedBox(height: 10),
-          const _NearbyCard(
-            listingId: 'l2',
-            title: 'Bukhara Old City Studio',
-            subtitle: 'Bukhara вЂў 2 nights',
-            price: '620 000 UZS / night',
-            rating: '4.78',
-            imageAssetPath: 'assets/images/home4.png',
-            color: Color(0xFFA9957B),
-          ),
-          const SizedBox(height: 10),
-          const _NearbyCard(
-            listingId: 'l1',
-            title: 'Cozy Living Room Stay',
-            subtitle: 'Tashkent вЂў 2 nights',
-            price: '740 000 UZS / night',
-            rating: '4.88',
-            imageAssetPath: 'assets/images/home3.png',
-            color: Color(0xFF7A7B87),
-          ),
-        ],
-      ).animate().fadeIn(duration: 260.ms),
+        );
+      },
     );
+
+    if (selectedRole == null || selectedRole == currentRole || !mounted) {
+      return;
+    }
+
+    ref.read(appSessionControllerProvider.notifier).setRole(selectedRole);
+    setState(() => _index = 0);
+  }
+
+  Future<void> _signOut() async {
+    await ref.read(authControllerProvider.notifier).signOut();
+    ref.read(appSessionControllerProvider.notifier).clearRole();
+    if (mounted) {
+      context.go(RouteNames.auth);
+    }
   }
 }
 
-class _HomePill extends StatelessWidget {
-  const _HomePill({required this.icon, required this.label, this.onTap});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        height: 46,
-        decoration: BoxDecoration(
-          color: const Color(0xFFEFF0F3),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: const Color(0xFF3E4658)),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 18 / 1.2,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickCityChip extends StatelessWidget {
-  const _QuickCityChip({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFDCE3EF)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.location_city_outlined, size: 14),
-              const SizedBox(width: 6),
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SegmentTile extends StatelessWidget {
-  const _SegmentTile({
-    required this.label,
-    required this.icon,
-    required this.width,
-    this.active = false,
-    this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final double width;
-  final bool active;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: width,
-        height: 90,
-        decoration: BoxDecoration(
-          color: active ? const Color(0xFF072A73) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: active
-              ? const [
-                  BoxShadow(
-                    color: Color(0x22000000),
-                    blurRadius: 14,
-                    offset: Offset(0, 8),
-                  ),
-                ]
-              : const [],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: active ? Colors.white : const Color(0xFF2F374A)),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: active ? Colors.white : const Color(0xFF2F374A),
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FeaturedStayCard extends ConsumerWidget {
-  const _FeaturedStayCard({
-    required this.listingId,
-    required this.title,
-    required this.location,
-    required this.price,
-    required this.rating,
-    required this.imageAssetPath,
-  });
-
-  final String listingId;
-  final String title;
-  final String location;
-  final String price;
-  final String rating;
-  final String imageAssetPath;
+class _ExploreTab extends ConsumerWidget {
+  const _ExploreTab();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isFavorite = ref.watch(
-      favoritesIdsProvider.select((ids) => ids.contains(listingId)),
-    );
-    return InkWell(
-      onTap: () => context.push('${RouteNames.listingDetails}/$listingId'),
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+    final listingsAsync = ref.watch(_homeExploreListingsProvider);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+      children: [
+        _HeroCard(
+          title: _copy(
+            context,
+            en: 'Find your next stay in Uzbekistan',
+            ru: 'Найдите следующее жильё в Узбекистане',
+            uz: 'O\'zbekistondagi keyingi turar joyingizni toping',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Short stays only, direct host contact, and fast booking requests.',
+            ru: 'Только краткосрочная аренда, прямой контакт с хозяином и быстрые заявки на бронь.',
+            uz: 'Faqat qisqa muddatli ijara, host bilan to\'g\'ridan-to\'g\'ri aloqa va tez bron so\'rovlari.',
+          ),
+          primaryLabel: _copy(
+            context,
+            en: 'Open search',
+            ru: 'Открыть поиск',
+            uz: 'Qidiruvni ochish',
+          ),
+          primaryIcon: Icons.search_rounded,
+          onPrimaryTap: () => context.push(RouteNames.search),
+          secondaryLabel: _copy(
+            context,
+            en: 'Open map',
+            ru: 'Открыть карту',
+            uz: 'Xaritani ochish',
+          ),
+          secondaryIcon: Icons.map_outlined,
+          onSecondaryTap: () => context.push(RouteNames.searchMap),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                SizedBox(
-                  height: 320,
-                  width: double.infinity,
-                  child: Image.asset(imageAssetPath, fit: BoxFit.cover),
+        const SizedBox(height: 18),
+        _SectionCard(
+          title: _copy(
+            context,
+            en: 'Recommended stays',
+            ru: 'Рекомендуемые варианты',
+            uz: 'Tavsiya etilgan joylar',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Clean stable preview from the real backend.',
+            ru: 'Стабильная подборка из реального backend.',
+            uz: 'Real backenddan barqaror tavsiyalar.',
+          ),
+          child: listingsAsync.when(
+            data: (items) {
+              if (items.isEmpty) {
+                return _InfoBanner(
+                  icon: Icons.inbox_outlined,
+                  text: _copy(
+                    context,
+                    en: 'No listings are available yet.',
+                    ru: 'Пока нет доступных объявлений.',
+                    uz: 'Hozircha e\'lonlar yo\'q.',
+                  ),
+                );
+              }
+
+              return Column(
+                children: items
+                    .take(4)
+                    .map(
+                      (listing) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _ListingPreviewTile(
+                          listing: listing,
+                          onTap: () => context.push(
+                            '${RouteNames.listingDetails}/${listing.id}',
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              );
+            },
+            loading: () => const _LoadingBlock(),
+            error: (error, _) =>
+                _InfoBanner(icon: Icons.error_outline, text: error.toString()),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FavoritesTab extends ConsumerWidget {
+  const _FavoritesTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favoriteIds = ref.watch(favoritesIdsProvider);
+    final favoritesAsync = ref.watch(_homeFavoriteListingsProvider);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+      children: [
+        _SectionHeader(
+          title: _copy(
+            context,
+            en: 'Saved stays',
+            ru: 'Сохранённые варианты',
+            uz: 'Saqlangan joylar',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Your favorites open directly into the listing details screen.',
+            ru: 'Избранные объявления открываются сразу в экран объекта.',
+            uz: 'Sevimli e\'lonlar to\'g\'ridan-to\'g\'ri detail ekranga ochiladi.',
+          ),
+        ),
+        const SizedBox(height: 14),
+        if (favoriteIds.isEmpty)
+          _SectionCard(
+            title: _copy(
+              context,
+              en: 'No favorites yet',
+              ru: 'Пока нет избранного',
+              uz: 'Hali sevimlilar yo\'q',
+            ),
+            subtitle: _copy(
+              context,
+              en: 'Tap the heart on any apartment to save it here.',
+              ru: 'Нажмите на сердце в любом объявлении, чтобы сохранить его здесь.',
+              uz: 'Istalgan e\'londagi yurakni bosib, uni shu yerga saqlang.',
+            ),
+            child: FilledButton.icon(
+              onPressed: () => context.push(RouteNames.search),
+              icon: const Icon(Icons.search_rounded),
+              label: Text(
+                _copy(
+                  context,
+                  en: 'Browse listings',
+                  ru: 'Смотреть объявления',
+                  uz: 'E\'lonlarni ko\'rish',
                 ),
-                Positioned(
-                  left: 12,
-                  bottom: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 7,
+              ),
+            ),
+          )
+        else
+          _SectionCard(
+            title: _copy(
+              context,
+              en: 'Favorites',
+              ru: 'Избранное',
+              uz: 'Sevimlilar',
+            ),
+            subtitle: _copy(
+              context,
+              en: '${favoriteIds.length} saved listing(s)',
+              ru: 'Сохранено объявлений: ${favoriteIds.length}',
+              uz: 'Saqlangan e\'lonlar: ${favoriteIds.length}',
+            ),
+            child: favoritesAsync.when(
+              data: (items) {
+                if (items.isEmpty) {
+                  return _InfoBanner(
+                    icon: Icons.favorite_outline_rounded,
+                    text: _copy(
+                      context,
+                      en: 'Saved items are no longer available.',
+                      ru: 'Сохранённые объекты больше недоступны.',
+                      uz: 'Saqlangan obyektlar endi mavjud emas.',
                     ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF072A73),
-                      borderRadius: BorderRadius.all(Radius.circular(999)),
+                  );
+                }
+
+                return Column(
+                  children: items
+                      .map(
+                        (listing) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _ListingPreviewTile(
+                            listing: listing,
+                            highlightFavorite: true,
+                            onTap: () => context.push(
+                              '${RouteNames.listingDetails}/${listing.id}',
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                );
+              },
+              loading: () => const _LoadingBlock(),
+              error: (error, _) => _InfoBanner(
+                icon: Icons.error_outline,
+                text: error.toString(),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _BookingsTab extends ConsumerWidget {
+  const _BookingsTab({required this.role});
+
+  final AppRole role;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bookingsAsync = ref.watch(
+      role == AppRole.host ? _hostBookingsProvider : _guestBookingsProvider,
+    );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+      children: [
+        _SectionHeader(
+          title: role == AppRole.host
+              ? _copy(
+                  context,
+                  en: 'Booking requests',
+                  ru: 'Заявки на бронь',
+                  uz: 'Bron so\'rovlari',
+                )
+              : _copy(
+                  context,
+                  en: 'My bookings',
+                  ru: 'Мои брони',
+                  uz: 'Mening bronlarim',
+                ),
+          subtitle: role == AppRole.host
+              ? _copy(
+                  context,
+                  en: 'See new requests and upcoming guest stays.',
+                  ru: 'Смотрите новые заявки и предстоящие заезды гостей.',
+                  uz: 'Yangi so\'rovlar va yaqinlashayotgan mehmonlarni ko\'ring.',
+                )
+              : _copy(
+                  context,
+                  en: 'Track your requests and upcoming stays.',
+                  ru: 'Следите за заявками и предстоящими поездками.',
+                  uz: 'So\'rovlar va kelgusi safarlaringizni kuzating.',
+                ),
+        ),
+        const SizedBox(height: 14),
+        _SectionCard(
+          title: _copy(context, en: 'Bookings', ru: 'Брони', uz: 'Bronlar'),
+          subtitle: _copy(
+            context,
+            en: 'Stable list from the active backend.',
+            ru: 'Стабильный список из активного backend.',
+            uz: 'Faol backenddan barqaror ro\'yxat.',
+          ),
+          child: bookingsAsync.when(
+            data: (items) {
+              if (items.isEmpty) {
+                return _InfoBanner(
+                  icon: Icons.calendar_month_outlined,
+                  text: role == AppRole.host
+                      ? _copy(
+                          context,
+                          en: 'No booking requests yet.',
+                          ru: 'Пока нет заявок на бронь.',
+                          uz: 'Hozircha bron so\'rovlari yo\'q.',
+                        )
+                      : _copy(
+                          context,
+                          en: 'No bookings yet.',
+                          ru: 'Пока нет бронирований.',
+                          uz: 'Hozircha bronlar yo\'q.',
+                        ),
+                );
+              }
+
+              return Column(
+                children: items
+                    .map(
+                      (booking) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _BookingTile(booking: booking),
+                      ),
+                    )
+                    .toList(growable: false),
+              );
+            },
+            loading: () => const _LoadingBlock(),
+            error: (error, _) =>
+                _InfoBanner(icon: Icons.error_outline, text: error.toString()),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HostDashboardTab extends ConsumerWidget {
+  const _HostDashboardTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).valueOrNull?.user;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+      children: [
+        _HeroCard(
+          title: _copy(
+            context,
+            en: 'Host dashboard',
+            ru: 'Панель хоста',
+            uz: 'Host paneli',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Create listings, respond to requests, and keep communication in one place.',
+            ru: 'Создавайте объявления, отвечайте на заявки и держите переписку в одном месте.',
+            uz: 'E\'lon yarating, so\'rovlarga javob bering va yozishmalarni bir joyda saqlang.',
+          ),
+          primaryLabel: _copy(
+            context,
+            en: 'Create listing',
+            ru: 'Создать объявление',
+            uz: 'E\'lon yaratish',
+          ),
+          primaryIcon: Icons.add_home_work_outlined,
+          onPrimaryTap: () => context.push(RouteNames.createListing),
+          secondaryLabel: _copy(
+            context,
+            en: 'Host requests',
+            ru: 'Заявки хоста',
+            uz: 'Host so\'rovlari',
+          ),
+          secondaryIcon: Icons.assignment_turned_in_outlined,
+          onSecondaryTap: () => context.push(RouteNames.hostRequests),
+        ),
+        const SizedBox(height: 18),
+        _SectionCard(
+          title: _copy(
+            context,
+            en: 'Current mode',
+            ru: 'Текущий режим',
+            uz: 'Joriy rejim',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'This screen is intentionally simple while Chrome MVP is being stabilized.',
+            ru: 'Этот экран намеренно упрощён, пока мы стабилизируем Chrome MVP.',
+            uz: 'Chrome MVP barqarorlashayotganda bu ekran ataylab soddalashtirilgan.',
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _InfoLine(
+                icon: Icons.person_outline_rounded,
+                label: _copy(context, en: 'Host', ru: 'Хост', uz: 'Host'),
+                value:
+                    user?.displayName ??
+                    _copy(
+                      context,
+                      en: 'Signed in',
+                      ru: 'Выполнен вход',
+                      uz: 'Kirish bajarilgan',
                     ),
-                    child: Text(
-                      price,
+              ),
+              const SizedBox(height: 12),
+              _InfoLine(
+                icon: Icons.chat_bubble_outline_rounded,
+                label: _copy(context, en: 'Chats', ru: 'Чаты', uz: 'Chatlar'),
+                value: _copy(
+                  context,
+                  en: 'Open the Chats tab to reply to guests.',
+                  ru: 'Откройте вкладку «Чаты», чтобы отвечать гостям.',
+                  uz: 'Mehmonlarga javob berish uchun Chatlar bo\'limini oching.',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HostListingsTab extends StatelessWidget {
+  const _HostListingsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+      children: [
+        _SectionHeader(
+          title: _copy(
+            context,
+            en: 'Listings',
+            ru: 'Объявления',
+            uz: 'E\'lonlar',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Use the stable host actions below while the full host flow is being cleaned up.',
+            ru: 'Используйте стабильные действия ниже, пока мы дочищаем полный host flow.',
+            uz: 'To\'liq host flow tozalanayotganda quyidagi barqaror amallardan foydalaning.',
+          ),
+        ),
+        const SizedBox(height: 14),
+        _SectionCard(
+          title: _copy(
+            context,
+            en: 'Host tools',
+            ru: 'Инструменты хоста',
+            uz: 'Host vositalari',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Fast access to the most important host actions.',
+            ru: 'Быстрый доступ к самым важным действиям хоста.',
+            uz: 'Eng muhim host amallariga tez kirish.',
+          ),
+          child: Column(
+            children: [
+              _ActionTile(
+                icon: Icons.add_home_work_outlined,
+                title: _copy(
+                  context,
+                  en: 'Create a new listing',
+                  ru: 'Создать новое объявление',
+                  uz: 'Yangi e\'lon yaratish',
+                ),
+                subtitle: _copy(
+                  context,
+                  en: 'Start the multi-step listing flow.',
+                  ru: 'Запустить пошаговый сценарий создания объявления.',
+                  uz: 'Bosqichma-bosqich e\'lon yaratish jarayonini boshlash.',
+                ),
+                onTap: () => context.push(RouteNames.createListing),
+              ),
+              const SizedBox(height: 12),
+              _ActionTile(
+                icon: Icons.assignment_turned_in_outlined,
+                title: _copy(
+                  context,
+                  en: 'Open booking requests',
+                  ru: 'Открыть заявки на бронь',
+                  uz: 'Bron so\'rovlarini ochish',
+                ),
+                subtitle: _copy(
+                  context,
+                  en: 'Review and respond to incoming requests.',
+                  ru: 'Смотрите входящие заявки и отвечайте на них.',
+                  uz: 'Kiruvchi so\'rovlarni ko\'rib chiqing va javob bering.',
+                ),
+                onTap: () => context.push(RouteNames.hostRequests),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileTab extends ConsumerWidget {
+  const _ProfileTab({required this.onSignOut, required this.onSwitchRole});
+
+  final Future<void> Function() onSignOut;
+  final Future<void> Function() onSwitchRole;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authControllerProvider).valueOrNull?.user;
+    final role = ref.watch(appSessionControllerProvider).activeRole;
+    final favoriteCount = ref.watch(favoritesIdsProvider).length;
+
+    final displayName = user?.displayName.trim().isNotEmpty == true
+        ? user!.displayName
+        : _copy(
+            context,
+            en: 'Guest account',
+            ru: 'Аккаунт гостя',
+            uz: 'Mehmon akkaunti',
+          );
+    final email = user?.email.trim().isNotEmpty == true
+        ? user!.email
+        : _copy(context, en: 'No email', ru: 'Нет email', uz: 'Email yo\'q');
+    final phone = user?.phone?.trim().isNotEmpty == true
+        ? user!.phone!
+        : _copy(
+            context,
+            en: 'Phone not added',
+            ru: 'Телефон не добавлен',
+            uz: 'Telefon qo\'shilmagan',
+          );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primaryDeep, AppColors.secondary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  ),
-                ),
-                Positioned(
-                  right: 12,
-                  top: 12,
-                  child: InkWell(
-                    onTap: () => ref
-                        .read(favoritesIdsProvider.notifier)
-                        .toggle(listingId),
-                    child: CircleAvatar(
-                      radius: 22,
-                      backgroundColor: const Color(0x88FFFFFF),
-                      child: Icon(
-                        isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: isFavorite
-                            ? const Color(0xFFD64545)
-                            : Colors.white,
+                    const SizedBox(height: 6),
+                    Text(
+                      email,
+                      style: const TextStyle(
+                        color: Color(0xE6FFFFFF),
+                        fontSize: 15,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      phone,
+                      style: const TextStyle(
+                        color: Color(0xCCFFFFFF),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                icon: Icons.favorite_outline_rounded,
+                value: '$favoriteCount',
+                label: _copy(
+                  context,
+                  en: 'Saved',
+                  ru: 'Сохранено',
+                  uz: 'Saqlangan',
+                ),
+              ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                icon: Icons.swap_horiz_rounded,
+                value: role == AppRole.host
+                    ? _copy(context, en: 'Host', ru: 'Хост', uz: 'Host')
+                    : _copy(context, en: 'Guest', ru: 'Гость', uz: 'Mehmon'),
+                label: _copy(context, en: 'Mode', ru: 'Режим', uz: 'Rejim'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                icon: Icons.workspace_premium_outlined,
+                value: user?.isPremium == true ? 'ON' : 'OFF',
+                label: _copy(
+                  context,
+                  en: 'Premium',
+                  ru: 'Премиум',
+                  uz: 'Premium',
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _ActionTile(
+          icon: Icons.edit_outlined,
+          title: _copy(
+            context,
+            en: 'Edit profile',
+            ru: 'Редактировать профиль',
+            uz: 'Profilni tahrirlash',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Update your name and phone number.',
+            ru: 'Обновите имя и номер телефона.',
+            uz: 'Ism va telefon raqamingizni yangilang.',
+          ),
+          onTap: () => _showEditProfileSheet(context, ref, user),
+        ),
+        const SizedBox(height: 12),
+        _ActionTile(
+          icon: Icons.settings_outlined,
+          title: _copy(
+            context,
+            en: 'Settings',
+            ru: 'Настройки',
+            uz: 'Sozlamalar',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Language, privacy, and app preferences.',
+            ru: 'Язык, приватность и настройки приложения.',
+            uz: 'Til, maxfiylik va ilova sozlamalari.',
+          ),
+          onTap: () => context.push(RouteNames.settings),
+        ),
+        const SizedBox(height: 12),
+        _ActionTile(
+          icon: Icons.workspace_premium_outlined,
+          title: _copy(context, en: 'Premium', ru: 'Премиум', uz: 'Premium'),
+          subtitle: _copy(
+            context,
+            en: 'Manage Free Stay access and premium benefits.',
+            ru: 'Управляйте доступом к Free Stay и премиум-возможностями.',
+            uz: 'Free Stay kirishi va premium imkoniyatlarini boshqaring.',
+          ),
+          onTap: () => context.push(RouteNames.premiumPaywall),
+        ),
+        const SizedBox(height: 12),
+        _ActionTile(
+          icon: Icons.notifications_none_rounded,
+          title: _copy(
+            context,
+            en: 'Notifications',
+            ru: 'Уведомления',
+            uz: 'Bildirishnomalar',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Booking updates and important activity.',
+            ru: 'Обновления по броням и важная активность.',
+            uz: 'Bron yangilanishlari va muhim faollik.',
+          ),
+          onTap: () => context.push(RouteNames.notifications),
+        ),
+        const SizedBox(height: 12),
+        _ActionTile(
+          icon: Icons.support_agent_outlined,
+          title: _copy(context, en: 'Support', ru: 'Поддержка', uz: 'Yordam'),
+          subtitle: _copy(
+            context,
+            en: 'Help center and contact options.',
+            ru: 'Центр помощи и способы связи.',
+            uz: 'Yordam markazi va aloqa variantlari.',
+          ),
+          onTap: () => context.push(RouteNames.support),
+        ),
+        const SizedBox(height: 12),
+        _ActionTile(
+          icon: Icons.swap_horiz_rounded,
+          title: _copy(
+            context,
+            en: 'Switch role',
+            ru: 'Сменить роль',
+            uz: 'Rolni almashtirish',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Switch between renter and host mode.',
+            ru: 'Переключитесь между режимом гостя и хоста.',
+            uz: 'Mehmon va host rejimi o\'rtasida almashing.',
+          ),
+          onTap: onSwitchRole,
+        ),
+        const SizedBox(height: 16),
+        Material(
+          color: const Color(0xFFFFF1F1),
+          borderRadius: BorderRadius.circular(22),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(22),
+            onTap: onSignOut,
+            child: Ink(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFFF1B0B0)),
+              ),
               child: Row(
                 children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFE0E0),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.logout_rounded,
+                      color: Color(0xFFC53030),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
-                          style: TextStyle(
-                            color: Color(0xFF071E57),
-                            fontSize: 34 / 2,
-                            fontWeight: FontWeight.w700,
+                          _copy(
+                            context,
+                            en: 'Sign out',
+                            ru: 'Выйти из аккаунта',
+                            uz: 'Akkauntdan chiqish',
+                          ),
+                          style: const TextStyle(
+                            color: Color(0xFF9B1C1C),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
                           ),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
-                          location,
-                          style: TextStyle(color: Color(0xFF4E5568)),
+                          _copy(
+                            context,
+                            en: 'Leave this account on this device.',
+                            ru: 'Выйти из этого аккаунта на этом устройстве.',
+                            uz: 'Ushbu qurilmadagi akkauntdan chiqish.',
+                          ),
+                          style: const TextStyle(
+                            color: Color(0xFFB45353),
+                            height: 1.3,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  _RatingBadge(value: rating),
                 ],
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showEditProfileSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AuthUser? user,
+  ) async {
+    final firstNameController = TextEditingController(
+      text: user?.firstName ?? '',
+    );
+    final lastNameController = TextEditingController(
+      text: user?.lastName ?? '',
+    );
+    final phoneController = TextEditingController(text: user?.phone ?? '');
+
+    final shouldSave = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _copy(
+                sheetContext,
+                en: 'Edit profile',
+                ru: 'Редактировать профиль',
+                uz: 'Profilni tahrirlash',
+              ),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.text,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: firstNameController,
+              decoration: InputDecoration(
+                labelText: _copy(
+                  sheetContext,
+                  en: 'First name',
+                  ru: 'Имя',
+                  uz: 'Ism',
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: lastNameController,
+              decoration: InputDecoration(
+                labelText: _copy(
+                  sheetContext,
+                  en: 'Last name',
+                  ru: 'Фамилия',
+                  uz: 'Familiya',
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: phoneController,
+              decoration: InputDecoration(
+                labelText: _copy(
+                  sheetContext,
+                  en: 'Phone',
+                  ru: 'Телефон',
+                  uz: 'Telefon',
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    child: Text(
+                      MaterialLocalizations.of(sheetContext).cancelButtonLabel,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(true),
+                    child: Text(
+                      _copy(
+                        sheetContext,
+                        en: 'Save',
+                        ru: 'Сохранить',
+                        uz: 'Saqlash',
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+
+    if (shouldSave == true) {
+      await ref
+          .read(authControllerProvider.notifier)
+          .updateProfile(
+            firstName: firstNameController.text.trim(),
+            lastName: lastNameController.text.trim(),
+            phoneNumber: phoneController.text.trim(),
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _copy(
+                context,
+                en: 'Profile updated',
+                ru: 'Профиль обновлён',
+                uz: 'Profil yangilandi',
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    firstNameController.dispose();
+    lastNameController.dispose();
+    phoneController.dispose();
   }
 }
 
-class _NearbyCard extends ConsumerWidget {
-  const _NearbyCard({
-    required this.listingId,
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
     required this.title,
     required this.subtitle,
-    required this.price,
-    required this.rating,
-    required this.color,
-    this.imageAssetPath,
+    required this.primaryLabel,
+    required this.primaryIcon,
+    required this.onPrimaryTap,
+    required this.secondaryLabel,
+    required this.secondaryIcon,
+    required this.onSecondaryTap,
   });
 
-  final String listingId;
   final String title;
   final String subtitle;
-  final String price;
-  final String rating;
-  final Color color;
-  final String? imageAssetPath;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isFavorite = ref.watch(
-      favoritesIdsProvider.select((ids) => ids.contains(listingId)),
-    );
-
-    return InkWell(
-      onTap: () => context.push('${RouteNames.listingDetails}/$listingId'),
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: SizedBox(
-                width: 108,
-                height: 98,
-                child: imageAssetPath == null
-                    ? Container(color: color)
-                    : Image.asset(imageAssetPath!, fit: BoxFit.cover),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 34 / 2,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      InkWell(
-                        onTap: () => ref
-                            .read(favoritesIdsProvider.notifier)
-                            .toggle(listingId),
-                        child: Icon(
-                          isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorite
-                              ? const Color(0xFFD64545)
-                              : const Color(0xFF808697),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: Color(0xFF4E5568)),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Text(
-                        price,
-                        style: const TextStyle(
-                          color: Color(0xFF072A73),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 28 / 2,
-                        ),
-                      ),
-                      const Spacer(),
-                      const Icon(Icons.star, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        rating,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RatingBadge extends StatelessWidget {
-  const _RatingBadge({required this.value});
-
-  final String value;
+  final String primaryLabel;
+  final IconData primaryIcon;
+  final VoidCallback onPrimaryTap;
+  final String secondaryLabel;
+  final IconData secondaryIcon;
+  final VoidCallback onSecondaryTap;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4E2CB),
-        borderRadius: BorderRadius.circular(10),
+        gradient: const LinearGradient(
+          colors: [AppColors.primaryDeep, AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.star, size: 14, color: Color(0xFF6A480A)),
-          const SizedBox(width: 5),
           Text(
-            value,
+            title,
             style: const TextStyle(
-              color: Color(0xFF6A480A),
-              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
             ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Color(0xE6FFFFFF), height: 1.45),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onPrimaryTap,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primaryDeep,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  icon: Icon(primaryIcon),
+                  label: Text(primaryLabel),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onSecondaryTap,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0x66FFFFFF)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  icon: Icon(secondaryIcon),
+                  label: Text(secondaryLabel),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1166,477 +1407,299 @@ class _RatingBadge extends StatelessWidget {
   }
 }
 
-class _HomeTab extends StatelessWidget {
-  const _HomeTab({required this.title, required this.subtitle});
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.subtitle});
 
   final String title;
   final String subtitle;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E2133), Color(0xFF141522)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          style: const TextStyle(color: AppColors.textMuted, height: 1.45),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F172A),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
             ),
-            border: Border.all(color: const Color(0x1FFFFFFF)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x2A000000),
-                blurRadius: 30,
-                offset: Offset(0, 20),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(color: AppColors.textMuted, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ListingPreviewTile extends ConsumerWidget {
+  const _ListingPreviewTile({
+    required this.listing,
+    required this.onTap,
+    this.highlightFavorite = false,
+  });
+
+  final Listing listing;
+  final VoidCallback onTap;
+  final bool highlightFavorite;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFavorite = ref.watch(
+      favoritesIdsProvider.select((items) => items.contains(listing.id)),
+    );
+
+    return Material(
+      color: AppColors.surfaceSoft,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: SizedBox(
+                  width: 92,
+                  height: 92,
+                  child: _ListingImagePreview(
+                    imageUrl: listing.imageUrls.isEmpty
+                        ? null
+                        : listing.imageUrls.first,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      listing.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _listingLocation(listing),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: AppColors.textMuted),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Text(
+                          _listingPriceLabel(context, listing),
+                          style: const TextStyle(
+                            color: Color(0xFF6A480A),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => ref
+                              .read(favoritesIdsProvider.notifier)
+                              .toggle(listing.id),
+                          icon: Icon(
+                            isFavorite || highlightFavorite
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            color: isFavorite || highlightFavorite
+                                ? const Color(0xFFD64545)
+                                : AppColors.iconMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
+        ),
+      ),
+    );
+  }
+}
+
+class _ListingImagePreview extends StatelessWidget {
+  const _ListingImagePreview({required this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl == null || imageUrl!.isEmpty) {
+      return Container(
+        color: const Color(0xFFE8EDF5),
+        alignment: Alignment.center,
+        child: const Icon(Icons.image_outlined, color: Color(0xFF7A8397)),
+      );
+    }
+
+    if (imageUrl!.startsWith('assets/')) {
+      return Image.asset(
+        imageUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallback(),
+      );
+    }
+
+    return Image.network(
+      imageUrl!,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => _fallback(),
+      loadingBuilder: (context, child, progress) {
+        return progress == null ? child : _fallback(showLoader: true);
+      },
+    );
+  }
+
+  Widget _fallback({bool showLoader = false}) {
+    return Container(
+      color: const Color(0xFFE8EDF5),
+      alignment: Alignment.center,
+      child: showLoader
+          ? const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.image_outlined, color: Color(0xFF7A8397)),
+    );
+  }
+}
+
+class _BookingTile extends StatelessWidget {
+  const _BookingTile({required this.booking});
+
+  final Booking booking;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.calendar_month_outlined,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                  '${booking.checkInDate.day.toString().padLeft(2, '0')}.${booking.checkInDate.month.toString().padLeft(2, '0')} - ${booking.checkOutDate.day.toString().padLeft(2, '0')}.${booking.checkOutDate.month.toString().padLeft(2, '0')}',
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 4),
                 Text(
-                  subtitle,
-                  style: const TextStyle(color: Color(0xB3FFFFFF)),
-                ),
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ActionChip(
-                      label: const Text('Search'),
-                      onPressed: () => context.go(RouteNames.search),
-                    ),
-                    ActionChip(
-                      label: const Text('Bookings'),
-                      onPressed: () => context.go(RouteNames.bookings),
-                    ),
-                    ActionChip(
-                      label: const Text('Chat'),
-                      onPressed: () => context.go(RouteNames.chatList),
-                    ),
-                    ActionChip(
-                      label: const Text('Premium'),
-                      onPressed: () => context.go(RouteNames.premiumPaywall),
-                    ),
-                  ],
+                  '${_copy(context, en: 'Guests', ru: 'Гости', uz: 'Mehmonlar')}: ${booking.guestsCount}',
+                  style: const TextStyle(color: AppColors.textMuted),
                 ),
               ],
             ),
           ),
-        ),
-      ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08, end: 0),
-    );
-  }
-}
-
-class _FavoritesEntryTab extends StatelessWidget {
-  const _FavoritesEntryTab({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftPreviewCard(
-      title: title,
-      subtitle: subtitle,
-      icon: Icons.favorite_border,
-      child: const _FavoritesPreview(),
-    );
-  }
-}
-
-class _FavoritesPreview extends ConsumerWidget {
-  const _FavoritesPreview();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ids = ref.watch(favoritesIdsProvider).toList(growable: false);
-
-    if (ids.isEmpty) {
-      return const Text(
-        'No saved listings yet. Tap the heart on any listing to save it here.',
-        style: TextStyle(color: Color(0xFF64748B), height: 1.4),
-      );
-    }
-
-    final previewIds = ids.take(3).toList(growable: false);
-    final future = Future.wait(
-      previewIds.map((id) => ref.read(listingsRepositoryProvider).getById(id)),
-    );
-
-    return FutureBuilder<List<Listing?>>(
-      future: future,
-      builder: (context, snapshot) {
-        final listings = (snapshot.data ?? const <Listing?>[])
-            .whereType<Listing>()
-            .toList(growable: false);
-
-        return Column(
-          children: listings
-              .map(
-                (listing) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _PreviewRow(
-                    icon: Icons.favorite_border,
-                    title: listing.title,
-                    subtitle: '${listing.city}, ${listing.district}',
-                    onTap: () => context.push(
-                      '${RouteNames.listingDetails}/${listing.id}',
-                    ),
-                  ),
-                ),
-              )
-              .toList(growable: false),
-        );
-      },
-    );
-  }
-}
-
-class _ChatEntryTab extends StatelessWidget {
-  const _ChatEntryTab({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF12203A),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(color: Color(0xFF64748B), height: 1.3),
-            ),
-            const SizedBox(height: 16),
-            const Expanded(child: _ChatPreview()),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ChatPreview extends ConsumerWidget {
-  const _ChatPreview();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final threadsAsync = ref.watch(chatThreadsProvider);
-
-    return threadsAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: LinearProgressIndicator(minHeight: 3),
-      ),
-      error: (_, _) => const Text(
-        'Could not load chats yet.',
-        style: TextStyle(color: Color(0xFF64748B)),
-      ),
-      data: (threads) {
-        if (threads.isEmpty) {
-          return const Text(
-            'No chats yet. When you contact a host, the conversation will appear here immediately.',
-            style: TextStyle(color: Color(0xFF64748B), height: 1.4),
-          );
-        }
-
-        return ListView.separated(
-          itemCount: threads.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final thread = threads[index];
-            return _PreviewRow(
-              icon: Icons.chat_bubble_outline,
-              title: thread.counterpartName,
-              subtitle: thread.lastMessage?.isNotEmpty == true
-                  ? '${thread.listingTitle} · ${thread.lastMessage!}'
-                  : thread.listingTitle,
-              trailing: thread.unreadCount > 0 ? '${thread.unreadCount}' : null,
-              onTap: () => context.go(RouteNames.chatList),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _ProfileHomeTab extends ConsumerWidget {
-  const _ProfileHomeTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authControllerProvider).valueOrNull?.user;
-    final role = ref.watch(appSessionControllerProvider).activeRole;
-    final isHost = role == AppRole.host;
-    final firstName = auth?.firstName ?? 'Tutta';
-    final lastName = auth?.lastName ?? 'User';
-    final displayName = '$firstName $lastName'.trim();
-
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-        children: [
+          const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3C7A89), Color(0xFF7DB4A5)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              _bookingStatusLabel(context, booking.status),
+              style: const TextStyle(
+                color: AppColors.primaryDeep,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
               ),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x223C7A89),
-                  blurRadius: 24,
-                  offset: Offset(0, 14),
-                ),
-              ],
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: const Color(0x33FFFFFF),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.person_outline,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isHost
-                            ? _shellText(
-                                context,
-                                en: 'Host profile, support, and occupancy tools.',
-                                ru: 'РџСЂРѕС„РёР»СЊ С…РѕСЃС‚Р°, РїРѕРґРґРµСЂР¶РєР° Рё РёРЅСЃС‚СЂСѓРјРµРЅС‚С‹ Р·Р°РЅСЏС‚РѕСЃС‚Рё.',
-                                uz: 'Host profili, yordam va bandlik vositalari.',
-                              )
-                            : _shellText(
-                                context,
-                                en: 'Trips, premium access, and account preferences.',
-                                ru: 'РџРѕРµР·РґРєРё, premium-РґРѕСЃС‚СѓРї Рё РЅР°СЃС‚СЂРѕР№РєРё Р°РєРєР°СѓРЅС‚Р°.',
-                                uz: 'Safarlar, premium kirish va akkaunt sozlamalari.',
-                              ),
-                        style: const TextStyle(
-                          color: Color(0xE6FFFFFF),
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        auth?.email ?? 'concierge@tutta.com',
-                        style: const TextStyle(
-                          color: Color(0xCCFFFFFF),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                FilledButton.tonalIcon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0x2DFFFFFF),
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () => _showEditProfileSheet(context, ref, auth),
-                  icon: const Icon(Icons.edit_outlined),
-                  label: Text(
-                    _shellText(
-                      context,
-                      en: 'Edit',
-                      ru: 'Изменить',
-                      uz: 'Tahrirlash',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(duration: 260.ms).slideY(begin: 0.06, end: 0),
-          const SizedBox(height: 16),
-          _ProfileStatRow(
-            isHost: isHost,
-            userId: auth?.id,
-            isPremium: auth?.isPremium ?? false,
-          ),
-          const SizedBox(height: 16),
-          _ProfileActionCard(
-            icon: Icons.settings_outlined,
-            title: _shellText(
-              context,
-              en: 'Settings',
-              ru: 'РќР°СЃС‚СЂРѕР№РєРё',
-              uz: 'Sozlamalar',
-            ),
-            subtitle: _shellText(
-              context,
-              en: 'Language, privacy, and app preferences',
-              ru: 'РЇР·С‹Рє, РїСЂРёРІР°С‚РЅРѕСЃС‚СЊ Рё РЅР°СЃС‚СЂРѕР№РєРё РїСЂРёР»РѕР¶РµРЅРёСЏ',
-              uz: 'Til, maxfiylik va ilova sozlamalari',
-            ),
-            accent: const Color(0xFFF4F0E7),
-            iconColor: const Color(0xFF3C7A89),
-            onTap: () => context.go(RouteNames.settings),
-          ),
-          const SizedBox(height: 10),
-          _ProfileActionCard(
-            icon: Icons.workspace_premium_outlined,
-            title: _shellText(
-              context,
-              en: 'Premium',
-              ru: 'РџСЂРµРјРёСѓРј',
-              uz: 'Premium',
-            ),
-            subtitle: _shellText(
-              context,
-              en: 'Manage Free Stay access and premium benefits',
-              ru: 'РЈРїСЂР°РІР»РµРЅРёРµ РґРѕСЃС‚СѓРїРѕРј Free Stay Рё premium-РІРѕР·РјРѕР¶РЅРѕСЃС‚СЏРјРё',
-              uz: 'Free Stay kirishi va premium imkoniyatlarini boshqarish',
-            ),
-            accent: const Color(0xFFF7E7C1),
-            iconColor: const Color(0xFFB7791F),
-            onTap: () => context.go(RouteNames.premiumPaywall),
-          ),
-          const SizedBox(height: 10),
-          _ProfileActionCard(
-            icon: Icons.notifications_none,
-            title: _shellText(
-              context,
-              en: 'Notifications',
-              ru: 'РЈРІРµРґРѕРјР»РµРЅРёСЏ',
-              uz: 'Bildirishnomalar',
-            ),
-            subtitle: _shellText(
-              context,
-              en: 'Booking updates and activity alerts',
-              ru: 'РћР±РЅРѕРІР»РµРЅРёСЏ Р±СЂРѕРЅРёСЂРѕРІР°РЅРёР№ Рё РІР°Р¶РЅС‹Рµ СѓРІРµРґРѕРјР»РµРЅРёСЏ',
-              uz: 'Bron yangilanishlari va muhim bildirishnomalar',
-            ),
-            accent: const Color(0xFFF4F0E7),
-            iconColor: const Color(0xFF3C7A89),
-            onTap: () => context.go(RouteNames.notifications),
-          ),
-          const SizedBox(height: 10),
-          _ProfileActionCard(
-            icon: Icons.support_agent_outlined,
-            title: _shellText(
-              context,
-              en: 'Support',
-              ru: 'РџРѕРґРґРµСЂР¶РєР°',
-              uz: 'Yordam',
-            ),
-            subtitle: _shellText(
-              context,
-              en: 'Help center and contact options',
-              ru: 'Р¦РµРЅС‚СЂ РїРѕРјРѕС‰Рё Рё СЃРїРѕСЃРѕР±С‹ СЃРІСЏР·Рё',
-              uz: 'Yordam markazi va aloqa usullari',
-            ),
-            accent: const Color(0xFFF4F0E7),
-            iconColor: const Color(0xFF3C7A89),
-            onTap: () => context.go(RouteNames.support),
-          ),
-          const SizedBox(height: 10),
-          _ProfileActionCard(
-            icon: Icons.swap_horiz,
-            title: isHost
-                ? _shellText(
-                    context,
-                    en: 'Switch to renter mode',
-                    ru: 'РџРµСЂРµРєР»СЋС‡РёС‚СЊСЃСЏ РІ СЂРµР¶РёРј Р°СЂРµРЅРґР°С‚РѕСЂР°',
-                    uz: 'Mehmon rejimiga o\'tish',
-                  )
-                : _shellText(
-                    context,
-                    en: 'Switch to host mode',
-                    ru: 'РџРµСЂРµРєР»СЋС‡РёС‚СЊСЃСЏ РІ СЂРµР¶РёРј С…РѕСЃС‚Р°',
-                    uz: 'Host rejimiga o\'tish',
-                  ),
-            subtitle: _shellText(
-              context,
-              en: 'Change your current Tutta role instantly',
-              ru: 'РњРіРЅРѕРІРµРЅРЅРѕ РїРѕРјРµРЅСЏС‚СЊ С‚РµРєСѓС‰СѓСЋ СЂРѕР»СЊ РІ Tutta',
-              uz: 'Tutta ichidagi joriy rolni darhol almashtirish',
-            ),
-            accent: const Color(0xFFF4F0E7),
-            iconColor: const Color(0xFF3C7A89),
-            onTap: () {
-              ref.read(appSessionControllerProvider.notifier).clearRole();
-              context.go(RouteNames.roleSelector);
-            },
-          ),
-          const SizedBox(height: 14),
-          _ProfileActionCard(
-            icon: Icons.logout_rounded,
-            title: _shellText(
-              context,
-              en: 'Sign out',
-              ru: 'Р’С‹Р№С‚Рё',
-              uz: 'Chiqish',
-            ),
-            subtitle: _shellText(
-              context,
-              en: 'Leave your account and return to Get Started',
-              ru: 'Р’С‹Р№С‚Рё РёР· Р°РєРєР°СѓРЅС‚Р° Рё РІРµСЂРЅСѓС‚СЊСЃСЏ Рє Get Started',
-              uz: 'Akkauntdan chiqib Get Started sahifasiga qaytish',
-            ),
-            accent: const Color(0xFFFDECEC),
-            iconColor: const Color(0xFFD64545),
-            onTap: () async {
-              await ref.read(authControllerProvider.notifier).signOut();
-              await ref
-                  .read(appSessionControllerProvider.notifier)
-                  .resetForFirstLaunch();
-              if (context.mounted) {
-                context.go(RouteNames.onboarding);
-              }
-            },
           ),
         ],
       ),
@@ -1644,290 +1707,16 @@ class _ProfileHomeTab extends ConsumerWidget {
   }
 }
 
-Future<void> _showEditProfileSheet(
-  BuildContext context,
-  WidgetRef ref,
-  dynamic auth,
-) async {
-  final firstNameController = TextEditingController(
-    text: auth?.firstName ?? '',
-  );
-  final lastNameController = TextEditingController(text: auth?.lastName ?? '');
-  final phoneController = TextEditingController(text: auth?.phone ?? '');
-
-  await showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-    ),
-    builder: (sheetContext) => Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        18,
-        20,
-        MediaQuery.of(sheetContext).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _shellText(
-              sheetContext,
-              en: 'Edit profile',
-              ru: 'Редактировать профиль',
-              uz: 'Profilni tahrirlash',
-            ),
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF12203A),
-            ),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: firstNameController,
-            decoration: InputDecoration(
-              labelText: _shellText(
-                sheetContext,
-                en: 'First name',
-                ru: 'Имя',
-                uz: 'Ism',
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: lastNameController,
-            decoration: InputDecoration(
-              labelText: _shellText(
-                sheetContext,
-                en: 'Last name',
-                ru: 'Фамилия',
-                uz: 'Familiya',
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: phoneController,
-            decoration: InputDecoration(
-              labelText: _shellText(
-                sheetContext,
-                en: 'Phone',
-                ru: 'Телефон',
-                uz: 'Telefon',
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                  child: Text(
-                    MaterialLocalizations.of(sheetContext).cancelButtonLabel,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () async {
-                    await ref
-                        .read(authControllerProvider.notifier)
-                        .updateProfile(
-                          firstName: firstNameController.text.trim(),
-                          lastName: lastNameController.text.trim(),
-                          phoneNumber: phoneController.text.trim(),
-                        );
-                    if (sheetContext.mounted) {
-                      Navigator.of(sheetContext).pop();
-                    }
-                  },
-                  child: Text(
-                    _shellText(
-                      sheetContext,
-                      en: 'Save',
-                      ru: 'Сохранить',
-                      uz: 'Saqlash',
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-
-  firstNameController.dispose();
-  lastNameController.dispose();
-  phoneController.dispose();
-}
-
-class _ProfileStatRow extends ConsumerWidget {
-  const _ProfileStatRow({
-    required this.isHost,
-    required this.userId,
-    required this.isPremium,
-  });
-
-  final bool isHost;
-  final String? userId;
-  final bool isPremium;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final favoritesCount = ref.watch(favoritesIdsProvider).length;
-
-    if (userId == null) {
-      return Row(
-        children: [
-          Expanded(
-            child: _ProfileStatCard(
-              label: isHost
-                  ? _shellText(
-                      context,
-                      en: 'Requests',
-                      ru: 'Р—Р°СЏРІРєРё',
-                      uz: 'So\'rovlar',
-                    )
-                  : _shellText(
-                      context,
-                      en: 'Trips',
-                      ru: 'РџРѕРµР·РґРєРё',
-                      uz: 'Safarlar',
-                    ),
-              value: '0',
-              icon: isHost ? Icons.inbox_outlined : Icons.luggage_outlined,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _ProfileStatCard(
-              label: _shellText(
-                context,
-                en: 'Saved',
-                ru: 'РЎРѕС…СЂР°РЅРµРЅРѕ',
-                uz: 'Saqlangan',
-              ),
-              value: '$favoritesCount',
-              icon: Icons.favorite_border,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _ProfileStatCard(
-              label: _shellText(
-                context,
-                en: 'Premium',
-                ru: 'РџСЂРµРјРёСѓРј',
-                uz: 'Premium',
-              ),
-              value: isPremium
-                  ? _shellText(context, en: 'ON', ru: 'Р’РљР›', uz: 'YOQILGAN')
-                  : _shellText(
-                      context,
-                      en: 'OFF',
-                      ru: 'Р’Р«РљР›',
-                      uz: 'O\'CHIQ',
-                    ),
-              icon: Icons.workspace_premium_outlined,
-            ),
-          ),
-        ],
-      );
-    }
-
-    final future = isHost
-        ? ref.read(bookingRepositoryProvider).getHostBookings(userId!)
-        : ref.read(bookingRepositoryProvider).getGuestBookings(userId!);
-
-    return FutureBuilder(
-      future: future,
-      builder: (context, snapshot) {
-        final bookings = snapshot.data ?? const [];
-        return Row(
-          children: [
-            Expanded(
-              child: _ProfileStatCard(
-                label: isHost
-                    ? _shellText(
-                        context,
-                        en: 'Requests',
-                        ru: 'Р—Р°СЏРІРєРё',
-                        uz: 'So\'rovlar',
-                      )
-                    : _shellText(
-                        context,
-                        en: 'Trips',
-                        ru: 'РџРѕРµР·РґРєРё',
-                        uz: 'Safarlar',
-                      ),
-                value: '${bookings.length}',
-                icon: isHost ? Icons.inbox_outlined : Icons.luggage_outlined,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ProfileStatCard(
-                label: _shellText(
-                  context,
-                  en: 'Saved',
-                  ru: 'РЎРѕС…СЂР°РЅРµРЅРѕ',
-                  uz: 'Saqlangan',
-                ),
-                value: '$favoritesCount',
-                icon: Icons.favorite_border,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _ProfileStatCard(
-                label: _shellText(
-                  context,
-                  en: 'Premium',
-                  ru: 'РџСЂРµРјРёСѓРј',
-                  uz: 'Premium',
-                ),
-                value: isPremium
-                    ? _shellText(
-                        context,
-                        en: 'ON',
-                        ru: 'Р’РљР›',
-                        uz: 'YOQILGAN',
-                      )
-                    : _shellText(
-                        context,
-                        en: 'OFF',
-                        ru: 'Р’Р«РљР›',
-                        uz: 'O\'CHIQ',
-                      ),
-                icon: Icons.workspace_premium_outlined,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _ProfileStatCard extends StatelessWidget {
-  const _ProfileStatCard({
-    required this.label,
-    required this.value,
+class _StatCard extends StatelessWidget {
+  const _StatCard({
     required this.icon,
+    required this.value,
+    required this.label,
   });
 
-  final String label;
-  final String value;
   final IconData icon;
+  final String value;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -1936,45 +1725,43 @@ class _ProfileStatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE2E8F2)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: const Color(0xFF1B5ED8), size: 20),
+          Icon(icon, color: AppColors.primary, size: 20),
           const SizedBox(height: 12),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: Color(0xFF12203A),
+              color: AppColors.text,
               fontSize: 20,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Color(0xFF64748B))),
+          Text(label, style: const TextStyle(color: AppColors.textMuted)),
         ],
       ),
     );
   }
 }
 
-class _ProfileActionCard extends StatelessWidget {
-  const _ProfileActionCard({
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.accent = const Color(0xFFF4F7FC),
-    this.iconColor = const Color(0xFF145EE3),
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final Color accent;
-  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1982,13 +1769,13 @@ class _ProfileActionCard extends StatelessWidget {
       color: Colors.white,
       borderRadius: BorderRadius.circular(22),
       child: InkWell(
-        onTap: onTap,
         borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
         child: Ink(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFFE2E8F2)),
+            border: Border.all(color: AppColors.border),
           ),
           child: Row(
             children: [
@@ -1996,10 +1783,10 @@ class _ProfileActionCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: accent,
+                  color: AppColors.surfaceTint,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(icon, color: iconColor),
+                child: Icon(icon, color: AppColors.primary),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -2009,17 +1796,17 @@ class _ProfileActionCard extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        color: Color(0xFF12203A),
-                        fontWeight: FontWeight.w700,
+                        color: AppColors.text,
                         fontSize: 16,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        height: 1.3,
+                        color: AppColors.textMuted,
+                        height: 1.35,
                       ),
                     ),
                   ],
@@ -2035,77 +1822,124 @@ class _ProfileActionCard extends StatelessWidget {
   }
 }
 
-class _BookingsEntryTab extends StatelessWidget {
-  const _BookingsEntryTab({required this.title, required this.subtitle});
+class _InfoBanner extends StatelessWidget {
+  const _InfoBanner({required this.icon, required this.text});
 
-  final String title;
-  final String subtitle;
+  final IconData icon;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return _SoftPreviewCard(
-      title: title,
-      subtitle: subtitle,
-      icon: Icons.calendar_month_outlined,
-      child: const _BookingsPreview(),
-    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08, end: 0);
-  }
-}
-
-class _BookingsPreview extends ConsumerWidget {
-  const _BookingsPreview();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final userId = ref.watch(authControllerProvider).valueOrNull?.user?.id;
-    final role = ref.watch(appSessionControllerProvider).activeRole;
-
-    if (userId == null || role == null) {
-      return const Text(
-        'Sign in and choose a role to see your bookings here.',
-        style: TextStyle(color: Color(0xFF64748B)),
-      );
-    }
-
-    final future = role == AppRole.host
-        ? ref.read(bookingRepositoryProvider).getHostBookings(userId)
-        : ref.read(bookingRepositoryProvider).getGuestBookings(userId);
-
-    return FutureBuilder<List<dynamic>>(
-      future: future,
-      builder: (context, snapshot) {
-        final items = snapshot.data ?? const [];
-        if (items.isEmpty) {
-          return const Text(
-            'No bookings yet. Your upcoming trips and requests will appear here.',
-            style: TextStyle(color: Color(0xFF64748B), height: 1.4),
-          );
-        }
-
-        return Column(
-          children: items
-              .take(3)
-              .map(
-                (booking) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _PreviewRow(
-                    icon: Icons.calendar_month_outlined,
-                    title: 'Listing ${booking.listingId}',
-                    subtitle:
-                        '${booking.checkInDate.day}.${booking.checkInDate.month} - ${booking.checkOutDate.day}.${booking.checkOutDate.month}',
-                    trailing: _bookingStatusLabel(context, booking.status),
-                    onTap: () => context.go(RouteNames.bookings),
-                  ),
-                ),
-              )
-              .toList(growable: false),
-        );
-      },
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.textMuted),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(color: AppColors.textMuted, height: 1.4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-String _shellText(
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: const Color(0xFF6D7280)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(color: Color(0xFF425166), height: 1.4),
+              children: [
+                TextSpan(
+                  text: '$label: ',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                TextSpan(text: value),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LoadingBlock extends StatelessWidget {
+  const _LoadingBlock();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 20),
+      child: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+String _bookingStatusLabel(BuildContext context, BookingStatus status) {
+  switch (status) {
+    case BookingStatus.pendingHostApproval:
+      return _copy(context, en: 'Pending', ru: 'Ожидает', uz: 'Kutilmoqda');
+    case BookingStatus.confirmed:
+      return _copy(
+        context,
+        en: 'Confirmed',
+        ru: 'Подтверждено',
+        uz: 'Tasdiqlandi',
+      );
+    case BookingStatus.cancelledByGuest:
+    case BookingStatus.cancelledByHost:
+      return _copy(
+        context,
+        en: 'Cancelled',
+        ru: 'Отменено',
+        uz: 'Bekor qilingan',
+      );
+    case BookingStatus.completed:
+      return _copy(
+        context,
+        en: 'Completed',
+        ru: 'Завершено',
+        uz: 'Yakunlangan',
+      );
+  }
+}
+
+String _listingLocation(Listing listing) {
+  final parts = <String>[
+    listing.city.trim(),
+    if (listing.district.trim().isNotEmpty) listing.district.trim(),
+  ];
+  return parts.join(', ');
+}
+
+String _copy(
   BuildContext context, {
   required String en,
   required String ru,
@@ -2113,7 +1947,7 @@ String _shellText(
 }) {
   switch (Localizations.localeOf(context).languageCode) {
     case 'ru':
-      return ru;
+      return resolveRussianCopy(en, ru);
     case 'uz':
       return uz;
     default:
@@ -2121,160 +1955,73 @@ String _shellText(
   }
 }
 
-String _bookingStatusLabel(BuildContext context, Object status) {
-  final value = status.toString().split('.').last;
-  switch (value) {
-    case 'pendingHostApproval':
-      return _shellText(
-        context,
-        en: 'Pending',
-        ru: 'РћР¶РёРґР°РµС‚',
-        uz: 'Kutilmoqda',
-      );
-    case 'confirmed':
-      return _shellText(
-        context,
-        en: 'Confirmed',
-        ru: 'РџРѕРґС‚РІРµСЂР¶РґРµРЅРѕ',
-        uz: 'Tasdiqlandi',
-      );
-    case 'cancelledByGuest':
-    case 'cancelledByHost':
-      return _shellText(
-        context,
-        en: 'Cancelled',
-        ru: 'РћС‚РјРµРЅРµРЅРѕ',
-        uz: 'Bekor qilingan',
-      );
-    case 'completed':
-      return _shellText(
-        context,
-        en: 'Completed',
-        ru: 'Р—Р°РІРµСЂС€РµРЅРѕ',
-        uz: 'Yakunlangan',
-      );
-    default:
-      return value;
-  }
-}
-
-class _SoftPreviewCard extends StatelessWidget {
-  const _SoftPreviewCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.child,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFE2E8F2)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x140F172A),
-                blurRadius: 18,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F6FF),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(icon, color: const Color(0xFF2E6FDD)),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF12203A),
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                child,
-              ],
-            ),
-          ),
-        ),
-      ),
+String _listingPriceLabel(BuildContext context, Listing listing) {
+  if (listing.type == ListingType.freeStay) {
+    return _copy(
+      context,
+      en: 'Free stay',
+      ru: 'Бесплатное проживание',
+      uz: 'Bepul',
     );
   }
+  if (listing.nightlyPriceUzs == null) {
+    return _copy(
+      context,
+      en: 'Price on request',
+      ru: 'Цена по запросу',
+      uz: 'Narx so\'rov bo\'yicha',
+    );
+  }
+  return '${listing.nightlyPriceUzs} UZS';
 }
 
-class _PreviewRow extends StatelessWidget {
-  const _PreviewRow({
+class _RoleChoiceCard extends StatelessWidget {
+  const _RoleChoiceCard({
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.selected,
     required this.onTap,
-    this.trailing,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final bool selected;
   final VoidCallback onTap;
-  final String? trailing;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFF8FAFD),
-      borderRadius: BorderRadius.circular(18),
+      color: selected ? AppColors.primarySoft : Colors.white,
+      borderRadius: BorderRadius.circular(24),
       child: InkWell(
+        borderRadius: BorderRadius.circular(24),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
         child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE5EBF5)),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+              width: selected ? 2 : 1,
+            ),
           ),
           child: Row(
             children: [
-              Icon(icon, color: const Color(0xFF2E6FDD), size: 18),
-              const SizedBox(width: 10),
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.primary : AppColors.surfaceTint,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  icon,
+                  color: selected ? Colors.white : AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2282,174 +2029,33 @@ class _PreviewRow extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF12203A),
+                        color: AppColors.text,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        height: 1.35,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              if (trailing != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE9F0FF),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    trailing!,
-                    style: const TextStyle(
-                      color: Color(0xFF2459B8),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                )
-              else
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFF94A3B8),
-                ),
+              const SizedBox(width: 10),
+              Icon(
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_off_rounded,
+                color: selected ? AppColors.primary : AppColors.iconMuted,
+              ),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _HostRequestsEntryTab extends StatelessWidget {
-  const _HostRequestsEntryTab({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF232337), Color(0xFF171826)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            border: Border.all(color: const Color(0x1FFFFFFF)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: Color(0xB3FFFFFF)),
-                ),
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () => context.go(RouteNames.hostRequests),
-                  icon: const Icon(Icons.assignment_turned_in_outlined),
-                  label: const Text('Open Host Requests'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08, end: 0),
-    );
-  }
-}
-
-class _HostListingsTab extends StatelessWidget {
-  const _HostListingsTab({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF21253A), Color(0xFF141726)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            border: Border.all(color: const Color(0x1FFFFFFF)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x2A000000),
-                blurRadius: 30,
-                offset: Offset(0, 20),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: Color(0xB3FFFFFF)),
-                ),
-                const SizedBox(height: 22),
-                FilledButton.icon(
-                      onPressed: () => context.go(RouteNames.createListing),
-                      icon: const Icon(Icons.add_home_work_outlined),
-                      label: const Text('Add new listing'),
-                    )
-                    .animate()
-                    .fadeIn(duration: 260.ms)
-                    .slideX(begin: -0.08, end: 0),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                      onPressed: () => context.go(RouteNames.hostRequests),
-                      icon: const Icon(Icons.assignment_turned_in_outlined),
-                      label: const Text('Open host requests'),
-                    )
-                    .animate(delay: 70.ms)
-                    .fadeIn(duration: 260.ms)
-                    .slideX(begin: -0.08, end: 0),
-              ],
-            ),
-          ),
-        ),
-      ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08, end: 0),
     );
   }
 }

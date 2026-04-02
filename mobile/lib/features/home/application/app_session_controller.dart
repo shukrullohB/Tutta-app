@@ -8,27 +8,32 @@ class AppSessionState {
     required this.onboardingCompleted,
     required this.activeRole,
     required this.splashSeen,
+    required this.hydrated,
   });
 
   const AppSessionState.initial()
     : onboardingCompleted = false,
       activeRole = null,
-      splashSeen = false;
+      splashSeen = false,
+      hydrated = false;
 
   final bool onboardingCompleted;
   final AppRole? activeRole;
   final bool splashSeen;
+  final bool hydrated;
 
   AppSessionState copyWith({
     bool? onboardingCompleted,
     AppRole? activeRole,
     bool? splashSeen,
+    bool? hydrated,
     bool clearRole = false,
   }) {
     return AppSessionState(
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       activeRole: clearRole ? null : (activeRole ?? this.activeRole),
       splashSeen: splashSeen ?? this.splashSeen,
+      hydrated: hydrated ?? this.hydrated,
     );
   }
 }
@@ -59,7 +64,7 @@ class AppSessionController extends StateNotifier<AppSessionState> {
   }
 
   Future<void> resetForFirstLaunch() async {
-    state = const AppSessionState.initial();
+    state = const AppSessionState.initial().copyWith(hydrated: true);
     await Future.wait([
       _delete(_onboardingKey),
       _delete(_roleKey),
@@ -95,6 +100,7 @@ class AppSessionController extends StateNotifier<AppSessionState> {
       onboardingCompleted: onboardingRaw == 'true',
       activeRole: restoredRole,
       splashSeen: splashRaw == 'true',
+      hydrated: true,
     );
   }
 

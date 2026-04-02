@@ -14,7 +14,7 @@ import '../../features/chat/presentation/screens/chat_list_screen.dart';
 import '../../features/home/application/app_session_controller.dart';
 import '../../features/home/presentation/screens/home_shell_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
-import '../../features/listings/presentation/screens/listing_details_screen.dart';
+import 'listing_details_route_screen.dart';
 import '../../features/listings/presentation/screens/search_screen.dart';
 import '../../features/listings/presentation/screens/create_listing_screen.dart';
 import '../../features/listings/presentation/screens/edit_listing_screen.dart';
@@ -29,19 +29,25 @@ import '../../features/wishlist/presentation/screens/favorites_screen.dart';
 import 'route_names.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final isLoggedIn = ref.watch(
-    authControllerProvider.select(
-      (state) => state.valueOrNull?.isAuthenticated ?? false,
-    ),
-  );
+  final authAsync = ref.watch(authControllerProvider);
+  final authState = authAsync.valueOrNull;
+  final isLoggedIn = authState?.isAuthenticated ?? false;
+  final authHydrated = authAsync.hasValue
+      ? (authState?.hydrated ?? false)
+      : true;
   final session = ref.watch(appSessionControllerProvider);
 
   return GoRouter(
     initialLocation: RouteNames.splash,
     redirect: (context, state) {
       final location = state.matchedLocation;
+      final bootstrapping = !authHydrated || !session.hydrated;
       final onboardingCompleted = session.onboardingCompleted;
       final roleSelected = session.activeRole != null;
+
+      if (bootstrapping) {
+        return location == RouteNames.splash ? null : RouteNames.splash;
+      }
 
       if (location == RouteNames.splash) {
         return null;
@@ -240,12 +246,13 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
     if (!mounted) {
       return;
     }
-    final isLoggedIn = ref.read(
-      authControllerProvider.select(
-        (state) => state.valueOrNull?.isAuthenticated ?? false,
-      ),
-    );
+    final authState = ref.read(authControllerProvider).valueOrNull;
     final session = ref.read(appSessionControllerProvider);
+    if ((authState?.hydrated ?? false) == false || !session.hydrated) {
+      Future<void>.delayed(const Duration(milliseconds: 60), _continueFlow);
+      return;
+    }
+    final isLoggedIn = authState?.isAuthenticated ?? false;
 
     if (!session.onboardingCompleted) {
       context.go(RouteNames.onboarding);

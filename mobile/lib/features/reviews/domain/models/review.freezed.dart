@@ -25,6 +25,7 @@ mixin _$Review {
   String get bookingId => throw _privateConstructorUsedError;
   String get listingId => throw _privateConstructorUsedError;
   String get reviewerUserId => throw _privateConstructorUsedError;
+  String? get reviewerName => throw _privateConstructorUsedError;
   String get hostUserId => throw _privateConstructorUsedError;
   int get rating => throw _privateConstructorUsedError;
   String get comment => throw _privateConstructorUsedError;
@@ -49,6 +50,7 @@ abstract class $ReviewCopyWith<$Res> {
     String bookingId,
     String listingId,
     String reviewerUserId,
+    String? reviewerName,
     String hostUserId,
     int rating,
     String comment,
@@ -75,6 +77,7 @@ class _$ReviewCopyWithImpl<$Res, $Val extends Review>
     Object? bookingId = null,
     Object? listingId = null,
     Object? reviewerUserId = null,
+    Object? reviewerName = freezed,
     Object? hostUserId = null,
     Object? rating = null,
     Object? comment = null,
@@ -98,6 +101,10 @@ class _$ReviewCopyWithImpl<$Res, $Val extends Review>
                 ? _value.reviewerUserId
                 : reviewerUserId // ignore: cast_nullable_to_non_nullable
                       as String,
+            reviewerName: freezed == reviewerName
+                ? _value.reviewerName
+                : reviewerName // ignore: cast_nullable_to_non_nullable
+                      as String?,
             hostUserId: null == hostUserId
                 ? _value.hostUserId
                 : hostUserId // ignore: cast_nullable_to_non_nullable
@@ -133,6 +140,7 @@ abstract class _$$ReviewImplCopyWith<$Res> implements $ReviewCopyWith<$Res> {
     String bookingId,
     String listingId,
     String reviewerUserId,
+    String? reviewerName,
     String hostUserId,
     int rating,
     String comment,
@@ -158,6 +166,7 @@ class __$$ReviewImplCopyWithImpl<$Res>
     Object? bookingId = null,
     Object? listingId = null,
     Object? reviewerUserId = null,
+    Object? reviewerName = freezed,
     Object? hostUserId = null,
     Object? rating = null,
     Object? comment = null,
@@ -181,6 +190,10 @@ class __$$ReviewImplCopyWithImpl<$Res>
             ? _value.reviewerUserId
             : reviewerUserId // ignore: cast_nullable_to_non_nullable
                   as String,
+        reviewerName: freezed == reviewerName
+            ? _value.reviewerName
+            : reviewerName // ignore: cast_nullable_to_non_nullable
+                  as String?,
         hostUserId: null == hostUserId
             ? _value.hostUserId
             : hostUserId // ignore: cast_nullable_to_non_nullable
@@ -210,6 +223,7 @@ class _$ReviewImpl implements _Review {
     required this.bookingId,
     required this.listingId,
     required this.reviewerUserId,
+    this.reviewerName,
     required this.hostUserId,
     required this.rating,
     required this.comment,
@@ -228,6 +242,8 @@ class _$ReviewImpl implements _Review {
   @override
   final String reviewerUserId;
   @override
+  final String? reviewerName;
+  @override
   final String hostUserId;
   @override
   final int rating;
@@ -238,7 +254,7 @@ class _$ReviewImpl implements _Review {
 
   @override
   String toString() {
-    return 'Review(id: $id, bookingId: $bookingId, listingId: $listingId, reviewerUserId: $reviewerUserId, hostUserId: $hostUserId, rating: $rating, comment: $comment, createdAt: $createdAt)';
+    return 'Review(id: $id, bookingId: $bookingId, listingId: $listingId, reviewerUserId: $reviewerUserId, reviewerName: $reviewerName, hostUserId: $hostUserId, rating: $rating, comment: $comment, createdAt: $createdAt)';
   }
 
   @override
@@ -253,6 +269,8 @@ class _$ReviewImpl implements _Review {
                 other.listingId == listingId) &&
             (identical(other.reviewerUserId, reviewerUserId) ||
                 other.reviewerUserId == reviewerUserId) &&
+            (identical(other.reviewerName, reviewerName) ||
+                other.reviewerName == reviewerName) &&
             (identical(other.hostUserId, hostUserId) ||
                 other.hostUserId == hostUserId) &&
             (identical(other.rating, rating) || other.rating == rating) &&
@@ -269,6 +287,7 @@ class _$ReviewImpl implements _Review {
     bookingId,
     listingId,
     reviewerUserId,
+    reviewerName,
     hostUserId,
     rating,
     comment,
@@ -295,6 +314,7 @@ abstract class _Review implements Review {
     required final String bookingId,
     required final String listingId,
     required final String reviewerUserId,
+    final String? reviewerName,
     required final String hostUserId,
     required final int rating,
     required final String comment,
@@ -311,6 +331,8 @@ abstract class _Review implements Review {
   String get listingId;
   @override
   String get reviewerUserId;
+  @override
+  String? get reviewerName;
   @override
   String get hostUserId;
   @override

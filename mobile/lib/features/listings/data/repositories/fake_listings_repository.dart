@@ -372,6 +372,20 @@ class FakeListingsRepository implements ListingsRepository {
   }
 
   @override
+  Future<List<Listing>> getByHost({
+    required String hostId,
+    required bool hasPremium,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    return _seed
+        .where((listing) => listing.hostId == hostId)
+        .where(
+          (listing) => hasPremium || listing.type != ListingType.freeStay,
+        )
+        .toList(growable: false);
+  }
+
+  @override
   Future<Listing> createListing(CreateListingInput input) async {
     await Future<void>.delayed(const Duration(milliseconds: 350));
     return Listing(

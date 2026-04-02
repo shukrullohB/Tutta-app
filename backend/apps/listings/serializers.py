@@ -29,6 +29,8 @@ class AvailabilityDaySerializer(serializers.ModelSerializer):
 class ListingSerializer(serializers.ModelSerializer):
     images = ListingImageSerializer(many=True, read_only=True)
     host_id = serializers.IntegerField(source='host.id', read_only=True)
+    host_name = serializers.SerializerMethodField()
+    host_phone = serializers.SerializerMethodField()
     is_free_stay = serializers.SerializerMethodField()
 
     class Meta:
@@ -36,6 +38,8 @@ class ListingSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'host_id',
+            'host_name',
+            'host_phone',
             'title',
             'description',
             'location',
@@ -70,6 +74,17 @@ class ListingSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         return Listing.objects.create(host=self.context['request'].user, **validated_data)
+
+    def get_host_name(self, obj):
+        if not obj.host_id:
+            return ''
+        full_name = f'{obj.host.first_name} {obj.host.last_name}'.strip()
+        return full_name or obj.host.email
+
+    def get_host_phone(self, obj):
+        if not obj.show_phone:
+            return None
+        return getattr(obj.host, 'phone_number', None)
 
     def get_is_free_stay(self, obj):
         return obj.listing_type == Listing.Type.FREE_STAY

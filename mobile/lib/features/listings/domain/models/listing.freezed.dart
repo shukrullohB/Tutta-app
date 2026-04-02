@@ -23,6 +23,8 @@ Listing _$ListingFromJson(Map<String, dynamic> json) {
 mixin _$Listing {
   String get id => throw _privateConstructorUsedError;
   String get hostId => throw _privateConstructorUsedError;
+  String? get hostName => throw _privateConstructorUsedError;
+  String? get hostPhone => throw _privateConstructorUsedError;
   String get title => throw _privateConstructorUsedError;
   String get city => throw _privateConstructorUsedError;
   String get district => throw _privateConstructorUsedError;
@@ -55,6 +57,8 @@ abstract class $ListingCopyWith<$Res> {
   $Res call({
     String id,
     String hostId,
+    String? hostName,
+    String? hostPhone,
     String title,
     String city,
     String district,
@@ -89,6 +93,8 @@ class _$ListingCopyWithImpl<$Res, $Val extends Listing>
   $Res call({
     Object? id = null,
     Object? hostId = null,
+    Object? hostName = freezed,
+    Object? hostPhone = freezed,
     Object? title = null,
     Object? city = null,
     Object? district = null,
@@ -114,6 +120,14 @@ class _$ListingCopyWithImpl<$Res, $Val extends Listing>
                 ? _value.hostId
                 : hostId // ignore: cast_nullable_to_non_nullable
                       as String,
+            hostName: freezed == hostName
+                ? _value.hostName
+                : hostName // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            hostPhone: freezed == hostPhone
+                ? _value.hostPhone
+                : hostPhone // ignore: cast_nullable_to_non_nullable
+                      as String?,
             title: null == title
                 ? _value.title
                 : title // ignore: cast_nullable_to_non_nullable
@@ -187,6 +201,8 @@ abstract class _$$ListingImplCopyWith<$Res> implements $ListingCopyWith<$Res> {
   $Res call({
     String id,
     String hostId,
+    String? hostName,
+    String? hostPhone,
     String title,
     String city,
     String district,
@@ -220,6 +236,8 @@ class __$$ListingImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
     Object? hostId = null,
+    Object? hostName = freezed,
+    Object? hostPhone = freezed,
     Object? title = null,
     Object? city = null,
     Object? district = null,
@@ -245,6 +263,14 @@ class __$$ListingImplCopyWithImpl<$Res>
             ? _value.hostId
             : hostId // ignore: cast_nullable_to_non_nullable
                   as String,
+        hostName: freezed == hostName
+            ? _value.hostName
+            : hostName // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        hostPhone: freezed == hostPhone
+            ? _value.hostPhone
+            : hostPhone // ignore: cast_nullable_to_non_nullable
+                  as String?,
         title: null == title
             ? _value.title
             : title // ignore: cast_nullable_to_non_nullable
@@ -312,6 +338,8 @@ class _$ListingImpl implements _Listing {
   const _$ListingImpl({
     required this.id,
     required this.hostId,
+    this.hostName,
+    this.hostPhone,
     required this.title,
     required this.city,
     required this.district,
@@ -336,6 +364,10 @@ class _$ListingImpl implements _Listing {
   final String id;
   @override
   final String hostId;
+  @override
+  final String? hostName;
+  @override
+  final String? hostPhone;
   @override
   final String title;
   @override
@@ -381,7 +413,7 @@ class _$ListingImpl implements _Listing {
 
   @override
   String toString() {
-    return 'Listing(id: $id, hostId: $hostId, title: $title, city: $city, district: $district, type: $type, maxGuests: $maxGuests, minDays: $minDays, maxDays: $maxDays, nightlyPriceUzs: $nightlyPriceUzs, isActive: $isActive, amenities: $amenities, imageUrls: $imageUrls, description: $description, landmark: $landmark, metro: $metro)';
+    return 'Listing(id: $id, hostId: $hostId, hostName: $hostName, hostPhone: $hostPhone, title: $title, city: $city, district: $district, type: $type, maxGuests: $maxGuests, minDays: $minDays, maxDays: $maxDays, nightlyPriceUzs: $nightlyPriceUzs, isActive: $isActive, amenities: $amenities, imageUrls: $imageUrls, description: $description, landmark: $landmark, metro: $metro)';
   }
 
   @override
@@ -391,6 +423,10 @@ class _$ListingImpl implements _Listing {
             other is _$ListingImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.hostId, hostId) || other.hostId == hostId) &&
+            (identical(other.hostName, hostName) ||
+                other.hostName == hostName) &&
+            (identical(other.hostPhone, hostPhone) ||
+                other.hostPhone == hostPhone) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.city, city) || other.city == city) &&
             (identical(other.district, district) ||
@@ -425,6 +461,8 @@ class _$ListingImpl implements _Listing {
     runtimeType,
     id,
     hostId,
+    hostName,
+    hostPhone,
     title,
     city,
     district,
@@ -459,6 +497,8 @@ abstract class _Listing implements Listing {
   const factory _Listing({
     required final String id,
     required final String hostId,
+    final String? hostName,
+    final String? hostPhone,
     required final String title,
     required final String city,
     required final String district,
@@ -481,6 +521,10 @@ abstract class _Listing implements Listing {
   String get id;
   @override
   String get hostId;
+  @override
+  String? get hostName;
+  @override
+  String? get hostPhone;
   @override
   String get title;
   @override

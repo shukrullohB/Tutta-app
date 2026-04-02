@@ -8,6 +8,8 @@ class ApiEndpoints {
   static const authLogout = '/auth/logout';
   static const authGoogle = '/auth/google';
   static const usersMe = '/users/me';
+  static String userPublicProfile(String userId) =>
+      '/users/$userId/public-profile';
 
   // Legacy auth endpoints (to be removed after full auth migration)
   static const authOtpRequest = '/auth/otp/request';
@@ -16,6 +18,7 @@ class ApiEndpoints {
 
   // Listings contract
   static const listings = '/listings';
+  static String listingsByHost(String hostId) => '$listings?host=$hostId';
 
   static String listingById(String id) => '$listings/$id';
 

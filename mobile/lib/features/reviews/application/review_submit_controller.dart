@@ -59,7 +59,11 @@ class ReviewSubmitController extends StateNotifier<AsyncValue<void>> {
       throw const AppException('Only guest can submit this review.');
     }
 
-    if (booking.status != BookingStatus.confirmed || !booking.isReviewAllowed) {
+    final statusAllowsReview =
+        booking.status == BookingStatus.confirmed ||
+        booking.status == BookingStatus.completed;
+
+    if (!statusAllowsReview || !booking.isReviewAllowed) {
       state = AsyncValue.error(
         const AppException('Review is allowed only after checkout date.'),
         StackTrace.current,

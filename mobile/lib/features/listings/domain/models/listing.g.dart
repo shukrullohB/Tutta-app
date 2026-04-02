@@ -10,6 +10,8 @@ _$ListingImpl _$$ListingImplFromJson(Map<String, dynamic> json) =>
     _$ListingImpl(
       id: json['id'] as String,
       hostId: json['hostId'] as String,
+      hostName: json['hostName'] as String?,
+      hostPhone: json['hostPhone'] as String?,
       title: json['title'] as String,
       city: json['city'] as String,
       district: json['district'] as String,
@@ -38,6 +40,8 @@ Map<String, dynamic> _$$ListingImplToJson(_$ListingImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'hostId': instance.hostId,
+      'hostName': instance.hostName,
+      'hostPhone': instance.hostPhone,
       'title': instance.title,
       'city': instance.city,
       'district': instance.district,

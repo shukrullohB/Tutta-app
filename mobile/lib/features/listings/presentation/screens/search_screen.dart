@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/theme/app_colors.dart';
 import '../../../../app/router/route_names.dart';
 import '../../application/search_controller.dart';
 import '../../domain/models/listing.dart';
@@ -45,7 +46,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -61,14 +62,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           onPressed: () => context.go(RouteNames.home),
                           icon: const Icon(
                             Icons.arrow_back,
-                            color: Color(0xFF072A73),
+                            color: AppColors.text,
                           ),
                         ),
                         const SizedBox(width: 14),
                         const Text(
                           'Tutta',
                           style: TextStyle(
-                            color: Color(0xFF072A73),
+                            color: AppColors.text,
                             fontSize: 38 / 2,
                             fontWeight: FontWeight.w700,
                           ),
@@ -78,11 +79,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           onPressed: () => context.go(RouteNames.settings),
                           icon: const CircleAvatar(
                             radius: 16,
-                            backgroundColor: Color(0xFFF3CDAD),
+                            backgroundColor: AppColors.primarySoft,
                             child: Icon(
                               Icons.person,
                               size: 16,
-                              color: Color(0xFFB78664),
+                              color: AppColors.primaryDeep,
                             ),
                           ),
                         ),
@@ -91,20 +92,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     const SizedBox(height: 14),
                     Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE9EAEE),
+                        color: AppColors.surfaceTint,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: TextField(
                         controller: _cityController,
-                        style: const TextStyle(color: Color(0xFF151A26)),
+                        style: const TextStyle(color: AppColors.text),
                         decoration: const InputDecoration(
                           border: InputBorder.none,
                           prefixIcon: Icon(
                             Icons.search,
-                            color: Color(0xFF707788),
+                            color: AppColors.textMuted,
                           ),
                           hintText: 'Tashkent, Uzbekistan',
-                          hintStyle: TextStyle(color: Color(0xFF707788)),
+                          hintStyle: TextStyle(color: AppColors.textMuted),
                           contentPadding: EdgeInsets.symmetric(vertical: 14),
                         ),
                         onChanged: _onCityChanged,
@@ -120,7 +121,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE9EAEE),
+                              color: AppColors.surfaceTint,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
@@ -139,7 +140,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                         Icon(
                                           Icons.list,
                                           size: 14,
-                                          color: Color(0xFF475068),
+                                          color: AppColors.textSoft,
                                         ),
                                         SizedBox(width: 6),
                                         Text('List'),
@@ -234,7 +235,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
                   child: Card(
-                    color: const Color(0x33FF6E6E),
+                    color: const Color(0x22D64545),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Column(
@@ -320,7 +321,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           label: const Text('Show Map'),
           style: FilledButton.styleFrom(
             minimumSize: const Size(160, 50),
-            backgroundColor: const Color(0xFF072A73),
+            backgroundColor: AppColors.primaryDeep,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(999),
             ),
@@ -637,13 +638,13 @@ class _PricePresetChip extends StatelessWidget {
           color: selected ? const Color(0x1A1A5EFF) : const Color(0xFFF2F4F8),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? const Color(0xFF1A5EFF) : const Color(0xFFDCE3EF),
+            color: selected ? AppColors.primary : AppColors.border,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? const Color(0xFF1A5EFF) : const Color(0xFF4E566B),
+            color: selected ? AppColors.primary : AppColors.textSoft,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -728,7 +729,7 @@ class _FilterPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFF0F3),
+          color: AppColors.surfaceTint,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
@@ -762,8 +763,10 @@ class _SearchListingTile extends StatelessWidget {
     final imageUrl = listing.imageUrls.isEmpty ? null : listing.imageUrls.first;
     final rating = _mockRatingFor(listing.id);
     final reviewsCount = _mockReviewCountFor(listing.id);
-    final priceLabel = listing.nightlyPriceUzs == null
+    final priceLabel = listing.type == ListingType.freeStay
         ? 'Free stay'
+        : listing.nightlyPriceUzs == null
+        ? 'Price on request'
         : '${_formatUzs(listing.nightlyPriceUzs!)} UZS';
 
     return InkWell(
@@ -773,7 +776,7 @@ class _SearchListingTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFE1E3E8)),
+          border: Border.all(color: AppColors.border),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -800,7 +803,7 @@ class _SearchListingTile extends StatelessWidget {
                     child: Text(
                       _listingTypeLabel(listing.type),
                       style: const TextStyle(
-                        color: Color(0xFF253251),
+                        color: AppColors.text,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
                       ),
@@ -824,7 +827,7 @@ class _SearchListingTile extends StatelessWidget {
                         isFavorite ? Icons.favorite : Icons.favorite_border,
                         color: isFavorite
                             ? const Color(0xFFD64545)
-                            : const Color(0xFF072A73),
+                            : AppColors.text,
                         size: 20,
                       ),
                     ),
@@ -845,7 +848,7 @@ class _SearchListingTile extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0F2F7B),
+                          color: AppColors.primaryDeep,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -863,13 +866,13 @@ class _SearchListingTile extends StatelessWidget {
                           const Icon(
                             Icons.rate_review_outlined,
                             size: 15,
-                            color: Color(0xFF5E6678),
+                            color: AppColors.textMuted,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '$reviewsCount reviews',
                             style: const TextStyle(
-                              color: Color(0xFF5E6678),
+                              color: AppColors.textMuted,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -882,7 +885,7 @@ class _SearchListingTile extends StatelessWidget {
                         const Text(
                           'Instant',
                           style: TextStyle(
-                            color: Color(0xFF1A5EFF),
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -898,7 +901,7 @@ class _SearchListingTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 34 / 2,
-                            color: Color(0xFF071E57),
+                            color: AppColors.text,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -906,21 +909,21 @@ class _SearchListingTile extends StatelessWidget {
                       Text(
                         priceLabel,
                         style: const TextStyle(
-                          color: Color(0xFF6A480A),
+                          color: AppColors.primaryDeep,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const Text(
                         '/night',
-                        style: TextStyle(color: Color(0xFF7B8191)),
+                        style: TextStyle(color: AppColors.textMuted),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '${listing.district}, ${listing.city}',
-                    style: const TextStyle(color: Color(0xFF4E5568)),
+                    style: const TextStyle(color: AppColors.textSoft),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -952,7 +955,7 @@ class _AmenityTiny extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F5FB),
+        color: AppColors.surfaceTint,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -963,7 +966,7 @@ class _AmenityTiny extends StatelessWidget {
           Text(
             _amenityTinyLabel(amenity),
             style: const TextStyle(
-              color: Color(0xFF4E5568),
+              color: AppColors.textSoft,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -983,6 +986,14 @@ class _ListingImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imageUrl != null && imageUrl!.isNotEmpty) {
+      if (imageUrl!.startsWith('assets/')) {
+        return Image.asset(
+          imageUrl!,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _imageFallback(),
+        );
+      }
       return Image.network(
         imageUrl!,
         width: double.infinity,

@@ -34,6 +34,7 @@ class ListingListCreateView(generics.ListCreateAPIView):
         q = self.request.query_params.get('q')
         city = self.request.query_params.get('city')
         district = self.request.query_params.get('district')
+        host = self.request.query_params.get('host')
         listing_type = self.request.query_params.get('type')
         guests = self.request.query_params.get('guests')
         min_price = self.request.query_params.get('min_price')
@@ -56,6 +57,8 @@ class ListingListCreateView(generics.ListCreateAPIView):
             )
         if listing_type:
             queryset = queryset.filter(listing_type=listing_type)
+        if host:
+            queryset = queryset.filter(host_id=host)
         if guests:
             try:
                 guests_count = int(guests)
@@ -71,6 +74,11 @@ class ListingListCreateView(generics.ListCreateAPIView):
             is_active=True,
             moderation_status=Listing.ModerationStatus.APPROVED,
         )
+
+        if host:
+            if user.is_authenticated and str(user.id) == str(host):
+                return queryset
+            return public_queryset
 
         if user.is_authenticated:
             mine = self.request.query_params.get('mine')
