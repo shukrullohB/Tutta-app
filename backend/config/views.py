@@ -16,6 +16,7 @@ class HealthCheckView(views.APIView):
                 fields={
                     'status': serializers.CharField(),
                     'database': serializers.CharField(),
+                    'database_engine': serializers.CharField(),
                     'timestamp': serializers.DateTimeField(),
                 },
             )
@@ -33,6 +34,7 @@ class HealthCheckView(views.APIView):
         payload = {
             'status': 'ok' if db_ok else 'degraded',
             'database': 'ok' if db_ok else 'error',
+            'database_engine': connection.vendor,
             'timestamp': timezone.now(),
         }
         http_status = status.HTTP_200_OK if db_ok else status.HTTP_503_SERVICE_UNAVAILABLE

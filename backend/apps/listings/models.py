@@ -20,6 +20,8 @@ class Listing(models.Model):
     location = models.CharField(max_length=255)
     city = models.CharField(max_length=120, blank=True, default='')
     district = models.CharField(max_length=120, blank=True, default='')
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     landmark = models.CharField(max_length=160, blank=True, default='')
     metro = models.CharField(max_length=120, blank=True, default='')
     listing_type = models.CharField(max_length=20, choices=Type.choices)
@@ -27,6 +29,7 @@ class Listing(models.Model):
     max_guests = models.PositiveIntegerField(default=1)
     min_days = models.PositiveIntegerField(default=1)
     max_days = models.PositiveIntegerField(default=30)
+    amenities = models.JSONField(default=list, blank=True)
     show_phone = models.BooleanField(default=False)
     free_stay_profile = models.JSONField(default=dict, blank=True)
     moderation_status = models.CharField(

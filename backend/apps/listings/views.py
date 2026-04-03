@@ -16,7 +16,7 @@ class ListingListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated(), IsHostUser()]
+            return [permissions.IsAuthenticated()]
         return [permissions.AllowAny()]
 
     def get_serializer_class(self):
@@ -89,6 +89,21 @@ class ListingListCreateView(generics.ListCreateAPIView):
 
         return public_queryset
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        listing = serializer.save()
+        response_serializer = ListingSerializer(
+            listing,
+            context=self.get_serializer_context(),
+        )
+        headers = self.get_success_headers(response_serializer.data)
+        return response.Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
+
 
 class ListingDetailView(generics.RetrieveAPIView):
     queryset = Listing.objects.select_related('host').prefetch_related('images')
@@ -123,6 +138,22 @@ class ListingManageView(generics.RetrieveUpdateDestroyAPIView):
         # Soft delete keeps booking/review history intact.
         instance.is_active = False
         instance.save(update_fields=['is_active', 'updated_at'])
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        serializer.is_valid(raise_exception=True)
+        listing = serializer.save()
+        response_serializer = ListingSerializer(
+            listing,
+            context=self.get_serializer_context(),
+        )
+        return response.Response(response_serializer.data, status=status.HTTP_200_OK)
 
 
 class ListingPublishView(views.APIView):

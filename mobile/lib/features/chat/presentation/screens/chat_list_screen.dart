@@ -341,7 +341,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   }
 
   void _openListingDetails() {
-    context.push('${RouteNames.listingDetails}/${widget.thread.listingId}');
+    context.push(RouteNames.listingDetailsById(widget.thread.listingId));
   }
 
   Future<void> _sendMessage() async {

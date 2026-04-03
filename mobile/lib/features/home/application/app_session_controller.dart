@@ -8,6 +8,7 @@ class AppSessionState {
     required this.onboardingCompleted,
     required this.activeRole,
     required this.splashSeen,
+    required this.pendingHomeTab,
     required this.hydrated,
   });
 
@@ -15,24 +16,31 @@ class AppSessionState {
     : onboardingCompleted = false,
       activeRole = null,
       splashSeen = false,
+      pendingHomeTab = null,
       hydrated = false;
 
   final bool onboardingCompleted;
   final AppRole? activeRole;
   final bool splashSeen;
+  final String? pendingHomeTab;
   final bool hydrated;
 
   AppSessionState copyWith({
     bool? onboardingCompleted,
     AppRole? activeRole,
     bool? splashSeen,
+    String? pendingHomeTab,
     bool? hydrated,
     bool clearRole = false,
+    bool clearPendingHomeTab = false,
   }) {
     return AppSessionState(
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       activeRole: clearRole ? null : (activeRole ?? this.activeRole),
       splashSeen: splashSeen ?? this.splashSeen,
+      pendingHomeTab: clearPendingHomeTab
+          ? null
+          : (pendingHomeTab ?? this.pendingHomeTab),
       hydrated: hydrated ?? this.hydrated,
     );
   }
@@ -61,6 +69,17 @@ class AppSessionController extends StateNotifier<AppSessionState> {
   void clearRole() {
     state = state.copyWith(clearRole: true);
     _delete(_roleKey);
+  }
+
+  void requestHomeTab(String tab) {
+    state = state.copyWith(pendingHomeTab: tab);
+  }
+
+  void clearPendingHomeTab() {
+    if (state.pendingHomeTab == null) {
+      return;
+    }
+    state = state.copyWith(clearPendingHomeTab: true);
   }
 
   Future<void> resetForFirstLaunch() async {

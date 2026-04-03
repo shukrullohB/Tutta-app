@@ -435,7 +435,7 @@ class _HostListingCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(24),
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        onTap: () => context.push('${RouteNames.listingDetails}/${listing.id}'),
+        onTap: () => context.push(RouteNames.listingDetailsById(listing.id)),
         child: Ink(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(

@@ -148,7 +148,7 @@ class _FavoriteTile extends ConsumerWidget {
       elevation: 0,
       child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        onTap: () => context.push('${RouteNames.listingDetails}/${listing.id}'),
+        onTap: () => context.push(RouteNames.listingDetailsById(listing.id)),
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),

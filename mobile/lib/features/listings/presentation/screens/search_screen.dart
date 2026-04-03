@@ -300,7 +300,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                     .read(favoritesIdsProvider.notifier)
                                     .toggle(listing.id),
                                 onTap: () => context.push(
-                                  '${RouteNames.listingDetails}/${listing.id}',
+                                  RouteNames.listingDetailsById(listing.id),
                                 ),
                               )
                               .animate(delay: (50 * (index.clamp(0, 8))).ms)

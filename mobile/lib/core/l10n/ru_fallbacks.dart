@@ -16,7 +16,7 @@ String resolveRussianCopy(String en, String fallback) {
     return en.replaceFirst('Guest #', 'Гость #');
   }
 
-  return en;
+  return fallback.isNotEmpty ? fallback : en;
 }
 
 const Map<String, String> _ruOverrides = <String, String>{
@@ -64,14 +64,13 @@ const Map<String, String> _ruOverrides = <String, String>{
   'Host': 'Хозяин',
   'Mode': 'Режим',
   'Edit profile': 'Редактировать профиль',
-  'Update your name and phone number.':
-      'Обновите имя и номер телефона.',
+  'Update your name and phone number.': 'Обновите имя и номер телефона.',
   'Settings': 'Настройки',
   'Language, privacy, and app preferences.':
       'Язык, приватность и настройки приложения.',
   'Premium': 'Премиум',
   'Manage Free Stay access and premium benefits.':
-      'Управляйте доступом к Free Stay и премиум-возможностям.',
+      'Управляйте доступом к Free Stay и премиум-возможностями.',
   'Notifications': 'Уведомления',
   'Booking updates and important activity.':
       'Обновления по броням и важная активность.',
@@ -169,7 +168,7 @@ const Map<String, String> _ruOverrides = <String, String>{
   'Renter mode': 'Режим гостя',
   'Host mode': 'Режим хозяина',
   'Current mode': 'Текущий режим',
-  'Signed in': 'Вы вошли',
+  'Signed in': 'Вход выполнен',
   'Profile updated': 'Профиль обновлён',
   'First name': 'Имя',
   'Last name': 'Фамилия',
@@ -181,8 +180,24 @@ const Map<String, String> _ruOverrides = <String, String>{
   'Manage listings, chats, availability, and guest requests.':
       'Управляйте объявлениями, чатами, доступностью и заявками гостей.',
   'This screen is intentionally simple while Chrome MVP is being stabilized.':
-      'Этот экран пока упрощён, пока мы стабилизируем Chrome MVP.',
+      'Этот экран пока упрощен, пока мы стабилизируем Chrome MVP.',
   'Booking requests': 'Заявки на бронь',
   'Track your requests and upcoming stays.':
       'Следите за заявками и предстоящими проживаниями.',
+  'Create listings, respond to requests, and keep communication in one place.':
+      'Создавайте объявления, отвечайте на заявки и держите переписку в одном месте.',
+  'Open the Chats tab to reply to guests.':
+      'Откройте вкладку «Чаты», чтобы отвечать гостям.',
+  'All of your stays appear here, including drafts that are still invisible to guests.':
+      'Здесь отображаются все ваши объявления, включая черновики, которые пока не видны гостям.',
+  'Your listings': 'Ваши объявления',
+  'Open, edit, and track the visibility of each stay.':
+      'Открывайте, редактируйте и отслеживайте статус каждого объявления.',
+  'Reload': 'Обновить',
+  'You have not created any stays yet.':
+      'Вы пока не создали ни одного объявления.',
+  'Start the multi-step listing flow.':
+      'Запустите пошаговый сценарий создания объявления.',
+  'Open booking requests': 'Открыть заявки на бронь',
+  'No listing title': 'Без названия',
 };

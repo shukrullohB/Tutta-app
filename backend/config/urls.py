@@ -1,3 +1,5 @@
+import os
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -20,5 +22,5 @@ urlpatterns = [
     path('api/payments/', include('apps.payments.urls')),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG or os.getenv('SERVE_MEDIA', 'True').lower() == 'true':
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -35,7 +35,7 @@ class ApiClient {
 
   Future<ApiResult<Map<String, dynamic>>> post(
     String path, {
-    Map<String, dynamic>? data,
+    Object? data,
     Map<String, dynamic>? queryParameters,
     Map<String, String>? headers,
   }) async {
@@ -44,7 +44,7 @@ class ApiClient {
         path,
         data: data,
         queryParameters: queryParameters,
-        options: Options(headers: headers),
+        options: _optionsForBody(data: data, headers: headers),
       );
       return ApiSuccess(response.data ?? <String, dynamic>{});
     } on DioException catch (error) {
@@ -58,7 +58,7 @@ class ApiClient {
 
   Future<ApiResult<Map<String, dynamic>>> put(
     String path, {
-    Map<String, dynamic>? data,
+    Object? data,
     Map<String, dynamic>? queryParameters,
     Map<String, String>? headers,
   }) async {
@@ -67,7 +67,7 @@ class ApiClient {
         path,
         data: data,
         queryParameters: queryParameters,
-        options: Options(headers: headers),
+        options: _optionsForBody(data: data, headers: headers),
       );
       return ApiSuccess(response.data ?? <String, dynamic>{});
     } on DioException catch (error) {
@@ -81,7 +81,7 @@ class ApiClient {
 
   Future<ApiResult<Map<String, dynamic>>> patch(
     String path, {
-    Map<String, dynamic>? data,
+    Object? data,
     Map<String, dynamic>? queryParameters,
     Map<String, String>? headers,
   }) async {
@@ -90,7 +90,7 @@ class ApiClient {
         path,
         data: data,
         queryParameters: queryParameters,
-        options: Options(headers: headers),
+        options: _optionsForBody(data: data, headers: headers),
       );
       return ApiSuccess(response.data ?? <String, dynamic>{});
     } on DioException catch (error) {
@@ -104,7 +104,7 @@ class ApiClient {
 
   Future<ApiResult<Map<String, dynamic>>> delete(
     String path, {
-    Map<String, dynamic>? data,
+    Object? data,
     Map<String, dynamic>? queryParameters,
     Map<String, String>? headers,
   }) async {
@@ -157,6 +157,19 @@ class ApiClient {
       statusCode: error.response?.statusCode,
       code: error.type.name,
     );
+  }
+
+  Options _optionsForBody({
+    required Object? data,
+    Map<String, String>? headers,
+  }) {
+    if (data is FormData) {
+      return Options(
+        headers: headers,
+        contentType: 'multipart/form-data',
+      );
+    }
+    return Options(headers: headers);
   }
 }
 

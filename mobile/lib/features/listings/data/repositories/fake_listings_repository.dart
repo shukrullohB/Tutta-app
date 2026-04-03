@@ -203,7 +203,11 @@ class FakeListingsRepository implements ListingsRepository {
       maxDays: 18,
       nightlyPriceUzs: 480000,
       isActive: true,
-      amenities: [ListingAmenity.wifi, ListingAmenity.kitchen, ListingAmenity.petsAllowed],
+      amenities: [
+        ListingAmenity.wifi,
+        ListingAmenity.kitchen,
+        ListingAmenity.petsAllowed,
+      ],
       description: 'Quiet building with cozy interior.',
       imageUrls: [
         'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80',
@@ -239,7 +243,11 @@ class FakeListingsRepository implements ListingsRepository {
       maxDays: 21,
       nightlyPriceUzs: 300000,
       isActive: true,
-      amenities: [ListingAmenity.wifi, ListingAmenity.parking, ListingAmenity.kitchen],
+      amenities: [
+        ListingAmenity.wifi,
+        ListingAmenity.parking,
+        ListingAmenity.kitchen,
+      ],
       description: 'Affordable stay with free parking.',
       imageUrls: [
         'https://images.unsplash.com/photo-1502672023488-70e25813eb80?auto=format&fit=crop&w=1200&q=80',
@@ -275,7 +283,11 @@ class FakeListingsRepository implements ListingsRepository {
       maxDays: 20,
       nightlyPriceUzs: 530000,
       isActive: true,
-      amenities: [ListingAmenity.wifi, ListingAmenity.airConditioner, ListingAmenity.kitchen],
+      amenities: [
+        ListingAmenity.wifi,
+        ListingAmenity.airConditioner,
+        ListingAmenity.kitchen,
+      ],
       landmark: 'Lyabi-Hauz',
       description: 'Historic area with modern comfort.',
       imageUrls: [
@@ -283,8 +295,9 @@ class FakeListingsRepository implements ListingsRepository {
       ],
     ),
   ];
-  static final Map<String, Map<DateTime, AvailabilityDay>> _availabilityByListing =
-      <String, Map<DateTime, AvailabilityDay>>{};
+  static final List<Listing> _createdListings = <Listing>[];
+  static final Map<String, Map<DateTime, AvailabilityDay>>
+  _availabilityByListing = <String, Map<DateTime, AvailabilityDay>>{};
 
   @override
   Future<List<Listing>> search({
@@ -303,7 +316,7 @@ class FakeListingsRepository implements ListingsRepository {
     final cityToken = city.split(',').first.trim();
     final district = params.district.trim().toLowerCase();
 
-    return _seed
+    return [..._seed, ..._createdListings]
         .where((listing) {
           if (!listing.isActive) {
             return false;
@@ -363,7 +376,7 @@ class FakeListingsRepository implements ListingsRepository {
   @override
   Future<Listing?> getById(String listingId) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
-    for (final listing in _seed) {
+    for (final listing in [..._createdListings, ..._seed]) {
       if (listing.id == listingId) {
         return listing;
       }
@@ -372,15 +385,28 @@ class FakeListingsRepository implements ListingsRepository {
   }
 
   @override
+  Future<List<Listing>> getMine({bool includeInactive = false}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    return _createdListings
+        .where((listing) => includeInactive || listing.isActive)
+        .toList(growable: false);
+  }
+
+  @override
   Future<List<Listing>> getByHost({
     required String hostId,
     required bool hasPremium,
+    bool includeInactive = false,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 180));
-    return _seed
+    return [..._createdListings, ..._seed]
         .where((listing) => listing.hostId == hostId)
+        .where((listing) => includeInactive || listing.isActive)
         .where(
-          (listing) => hasPremium || listing.type != ListingType.freeStay,
+          (listing) =>
+              includeInactive ||
+              hasPremium ||
+              listing.type != ListingType.freeStay,
         )
         .toList(growable: false);
   }
@@ -388,13 +414,14 @@ class FakeListingsRepository implements ListingsRepository {
   @override
   Future<Listing> createListing(CreateListingInput input) async {
     await Future<void>.delayed(const Duration(milliseconds: 350));
-    return Listing(
+    final listing = Listing(
       id: 'draft_${DateTime.now().millisecondsSinceEpoch}',
       hostId: 'local_host',
       title: input.title.trim(),
       city: input.city.trim(),
       district: input.district.trim(),
       type: input.type,
+      amenities: input.amenities,
       maxGuests: input.maxGuests,
       minDays: input.minDays,
       maxDays: input.maxDays,
@@ -406,6 +433,8 @@ class FakeListingsRepository implements ListingsRepository {
       landmark: input.landmark?.trim(),
       metro: input.metro?.trim(),
     );
+    _createdListings.insert(0, listing);
+    return listing;
   }
 
   @override
@@ -414,13 +443,14 @@ class FakeListingsRepository implements ListingsRepository {
     required CreateListingInput input,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    return Listing(
+    final listing = Listing(
       id: listingId,
       hostId: 'local_host',
       title: input.title.trim(),
       city: input.city.trim(),
       district: input.district.trim(),
       type: input.type,
+      amenities: input.amenities,
       maxGuests: input.maxGuests,
       minDays: input.minDays,
       maxDays: input.maxDays,
@@ -432,6 +462,11 @@ class FakeListingsRepository implements ListingsRepository {
       landmark: input.landmark?.trim(),
       metro: input.metro?.trim(),
     );
+    final index = _createdListings.indexWhere((item) => item.id == listingId);
+    if (index >= 0) {
+      _createdListings[index] = listing;
+    }
+    return listing;
   }
 
   @override

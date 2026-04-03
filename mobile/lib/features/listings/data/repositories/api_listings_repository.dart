@@ -1,7 +1,11 @@
+import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
+
 import '../../../../core/errors/app_exception.dart';
 import '../../../../core/errors/failure.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
+import '../../../../core/network/api_result.dart';
 import '../../../../core/network/api_response_parser.dart';
 import '../../domain/models/availability_day.dart';
 import '../../domain/models/create_listing_input.dart';
@@ -40,16 +44,17 @@ class ApiListingsRepository implements ListingsRepository {
       },
     );
 
-    return result.when(
-      success: (data) {
-        final items = ApiResponseParser.extractList(data).map(_mapListing);
-        return _applyClientFilters(
-          items.toList(growable: false),
-          params: params,
-        );
-      },
-      failure: _throwFailure,
+    if (result is ApiFailure<Map<String, dynamic>>) {
+      _throwFailure(result.failure);
+    }
+
+    final data = (result as ApiSuccess<Map<String, dynamic>>).data;
+    final items = await _canonicalizeListings(
+      ApiResponseParser.extractList(
+        data,
+      ).map(_mapListing).toList(growable: false),
     );
+    return _applyClientFilters(items, params: params);
   }
 
   @override
@@ -68,54 +73,59 @@ class ApiListingsRepository implements ListingsRepository {
   }
 
   @override
+  Future<List<Listing>> getMine({bool includeInactive = false}) async {
+    final result = await _apiClient.get(
+      ApiEndpoints.listings,
+      queryParameters: const <String, dynamic>{'mine': 1},
+    );
+
+    if (result is ApiFailure<Map<String, dynamic>>) {
+      _throwFailure(result.failure);
+    }
+
+    final data = (result as ApiSuccess<Map<String, dynamic>>).data;
+    return _canonicalizeListings(
+      ApiResponseParser.extractList(data)
+          .map(_mapListing)
+          .where((listing) => includeInactive || listing.isActive)
+          .toList(growable: false),
+    );
+  }
+
+  @override
   Future<List<Listing>> getByHost({
     required String hostId,
     required bool hasPremium,
+    bool includeInactive = false,
   }) async {
     final result = await _apiClient.get(
       ApiEndpoints.listings,
       queryParameters: <String, dynamic>{'host': hostId},
     );
 
-    return result.when(
-      success: (data) {
-        final items = ApiResponseParser.extractList(data)
-            .map(_mapListing)
-            .where((listing) => listing.isActive)
-            .where((listing) => hasPremium || listing.type != ListingType.freeStay)
-            .toList(growable: false);
-        return items;
-      },
-      failure: _throwFailure,
+    if (result is ApiFailure<Map<String, dynamic>>) {
+      _throwFailure(result.failure);
+    }
+
+    final data = (result as ApiSuccess<Map<String, dynamic>>).data;
+    return _canonicalizeListings(
+      ApiResponseParser.extractList(data)
+          .map(_mapListing)
+          .where((listing) => includeInactive || listing.isActive)
+          .where(
+            (listing) =>
+                includeInactive ||
+                hasPremium ||
+                listing.type != ListingType.freeStay,
+          )
+          .toList(growable: false),
     );
   }
 
   @override
   Future<Listing> createListing(CreateListingInput input) async {
-    final result = await _apiClient.post(
-      ApiEndpoints.listings,
-      data: <String, dynamic>{
-        'title': input.title.trim(),
-        'description': input.description.trim(),
-        'city': input.city.trim(),
-        'district': input.district.trim(),
-        'location': '${input.city.trim()}, ${input.district.trim()}',
-        if ((input.landmark ?? '').trim().isNotEmpty)
-          'landmark': input.landmark!.trim(),
-        if ((input.metro ?? '').trim().isNotEmpty) 'metro': input.metro!.trim(),
-        'listing_type': _mapTypeToApi(input.type),
-        'price_per_night': input.type == ListingType.freeStay
-            ? null
-            : input.nightlyPriceUzs,
-        'max_guests': input.maxGuests,
-        'min_days': input.minDays,
-        'max_days': input.maxDays,
-        'show_phone': input.showPhone,
-        'free_stay_profile': input.type == ListingType.freeStay
-            ? input.freeStayProfile
-            : <String, dynamic>{},
-      },
-    );
+    final formData = await _buildListingFormData(input);
+    final result = await _apiClient.post(ApiEndpoints.listings, data: formData);
 
     return result.when(
       success: (data) => _mapListing(ApiResponseParser.extractMap(data)),
@@ -128,29 +138,10 @@ class ApiListingsRepository implements ListingsRepository {
     required String listingId,
     required CreateListingInput input,
   }) async {
+    final formData = await _buildListingFormData(input);
     final result = await _apiClient.put(
       ApiEndpoints.listingManage(listingId),
-      data: <String, dynamic>{
-        'title': input.title.trim(),
-        'description': input.description.trim(),
-        'city': input.city.trim(),
-        'district': input.district.trim(),
-        'location': '${input.city.trim()}, ${input.district.trim()}',
-        if ((input.landmark ?? '').trim().isNotEmpty)
-          'landmark': input.landmark!.trim(),
-        if ((input.metro ?? '').trim().isNotEmpty) 'metro': input.metro!.trim(),
-        'listing_type': _mapTypeToApi(input.type),
-        'price_per_night': input.type == ListingType.freeStay
-            ? null
-            : input.nightlyPriceUzs,
-        'max_guests': input.maxGuests,
-        'min_days': input.minDays,
-        'max_days': input.maxDays,
-        'show_phone': input.showPhone,
-        'free_stay_profile': input.type == ListingType.freeStay
-            ? input.freeStayProfile
-            : <String, dynamic>{},
-      },
+      data: formData,
     );
 
     return result.when(
@@ -208,6 +199,93 @@ class ApiListingsRepository implements ListingsRepository {
         .toList(growable: false);
   }
 
+  Future<List<Listing>> _canonicalizeListings(List<Listing> items) async {
+    if (items.isEmpty) {
+      return const <Listing>[];
+    }
+
+    final resolved = await Future.wait(
+      items.map((listing) async {
+        if (!_needsCanonicalHydration(listing)) {
+          return listing;
+        }
+        final fresh = await getById(listing.id);
+        return fresh ?? listing;
+      }),
+    );
+
+    return resolved
+        .where((listing) => listing.id.trim().isNotEmpty)
+        .toList(growable: false);
+  }
+
+  bool _needsCanonicalHydration(Listing listing) {
+    return listing.id.trim().isNotEmpty &&
+        (listing.title.trim().isEmpty ||
+            listing.city.trim().isEmpty ||
+            listing.district.trim().isEmpty);
+  }
+
+  Future<FormData> _buildListingFormData(CreateListingInput input) async {
+    final mapCoordinates = (input.mapCoordinates ?? '').trim();
+    final parsedCoordinates = _parseCoordinates(mapCoordinates);
+    final locationParts = <String>[
+      input.city.trim(),
+      input.district.trim(),
+      if (mapCoordinates.isNotEmpty) mapCoordinates,
+    ];
+    final composedLocation = locationParts.where((part) => part.isNotEmpty).join(', ');
+    final normalizedLandmark = (input.landmark ?? '').trim();
+
+    final data = <String, dynamic>{
+      'title': input.title.trim(),
+      'description': input.description.trim(),
+      'city': input.city.trim(),
+      'district': input.district.trim(),
+      'location': composedLocation,
+      if (parsedCoordinates != null) 'latitude': parsedCoordinates.$1,
+      if (parsedCoordinates != null) 'longitude': parsedCoordinates.$2,
+      if (normalizedLandmark.isNotEmpty || mapCoordinates.isNotEmpty)
+        'landmark': normalizedLandmark.isNotEmpty
+            ? normalizedLandmark
+            : mapCoordinates,
+      if ((input.metro ?? '').trim().isNotEmpty) 'metro': input.metro!.trim(),
+      'listing_type': _mapTypeToApi(input.type),
+      'amenities': input.amenities
+          .map(_mapAmenityToApi)
+          .toList(growable: false),
+      'price_per_night': input.type == ListingType.freeStay
+          ? null
+          : input.nightlyPriceUzs,
+      'max_guests': input.maxGuests,
+      'min_days': input.minDays,
+      'max_days': input.maxDays,
+      'show_phone': input.showPhone,
+      'free_stay_profile': input.type == ListingType.freeStay
+          ? input.freeStayProfile
+          : <String, dynamic>{},
+    };
+
+    if (input.imageFiles.isNotEmpty) {
+      data['image_files'] = await Future.wait(
+        input.imageFiles.map((file) async {
+          final bytes = await file.readAsBytes();
+          final fileName = _normalizeImageFileName(file.name);
+          return MultipartFile.fromBytes(
+            bytes,
+            filename: fileName,
+            contentType: _contentTypeForFileName(fileName),
+          );
+        }),
+      );
+    }
+    if (input.removeImageUrls.isNotEmpty) {
+      data['remove_image_urls'] = input.removeImageUrls;
+    }
+
+    return FormData.fromMap(data);
+  }
+
   Listing _mapListing(Map<String, dynamic> payload) {
     final id = payload['id']?.toString() ?? '';
     final hostId = payload['host_id']?.toString() ?? '';
@@ -217,112 +295,87 @@ class ApiListingsRepository implements ListingsRepository {
         ? payload['city']!.toString().trim()
         : split.isNotEmpty && split.first.isNotEmpty
         ? split.first
-        : 'Unknown';
+        : '';
     final district =
         (payload['district']?.toString().trim().isNotEmpty ?? false)
         ? payload['district']!.toString().trim()
         : split.length > 1 && split[1].isNotEmpty
         ? split[1]
-        : city;
+        : '';
     final rawType = payload['listing_type']?.toString().toLowerCase().trim();
     final rawPrice = payload['price_per_night'];
     final price = rawPrice is num
         ? rawPrice.toInt()
         : double.tryParse(rawPrice?.toString() ?? '')?.round();
-    final images = (payload['images'] is List)
-        ? (payload['images'] as List)
-              .map((item) {
-                if (item is Map<String, dynamic>) {
-                  return _normalizeImageUrl(item['image']?.toString() ?? '');
-                }
-                return _normalizeImageUrl(item?.toString() ?? '');
-              })
-              .where((url) => url.isNotEmpty)
-              .toList(growable: false)
-        : const <String>[];
+    final images = _extractImageUrls(payload);
     final resolvedType = _mapTypeFromApi(rawType);
     final resolvedImages = images.isEmpty
-        ? _fallbackAssetImages(
-            id: id,
-            title: payload['title']?.toString() ?? '',
-          )
+        ? _fallbackAssetImages(title: payload['title']?.toString() ?? '')
         : images;
-    final resolvedAmenities = _fallbackAmenities(
-      title: payload['title']?.toString() ?? '',
-      type: resolvedType,
-    );
+    final resolvedAmenities =
+        _mapAmenitiesFromApi(payload['amenities']).takeIfNotEmpty() ??
+        _fallbackAmenities(
+          title: payload['title']?.toString() ?? '',
+          type: resolvedType,
+        );
+    final landmarkRaw = payload['landmark']?.toString().trim();
+    final payloadCoordinates = _extractCoordinatesFromPayload(payload);
+    final derivedCoordinates = _extractCoordinatesFromLocation(location);
 
     return Listing(
       id: id,
       hostId: hostId,
       hostName: payload['host_name']?.toString().trim(),
       hostPhone: payload['host_phone']?.toString().trim(),
-      title: payload['title']?.toString() ?? 'Listing',
+      title: payload['title']?.toString().trim() ?? '',
       city: city,
       district: district,
       type: resolvedType,
-      maxGuests: payload['max_guests'] is int
-          ? payload['max_guests'] as int
-          : 1,
-      minDays: payload['min_days'] is int ? payload['min_days'] as int : 1,
-      maxDays: payload['max_days'] is int ? payload['max_days'] as int : 30,
+      maxGuests: _parseInt(payload['max_guests']) ?? 1,
+      minDays: _parseInt(payload['min_days']) ?? 1,
+      maxDays: _parseInt(payload['max_days']) ?? 30,
       nightlyPriceUzs: price,
       isActive: payload['is_active'] != false,
       amenities: resolvedAmenities,
       imageUrls: resolvedImages,
       description: payload['description']?.toString(),
-      landmark: payload['landmark']?.toString(),
+      landmark: (landmarkRaw?.isNotEmpty ?? false)
+          ? landmarkRaw
+          : payloadCoordinates ?? derivedCoordinates,
       metro: payload['metro']?.toString(),
     );
   }
 
-  List<String> _fallbackAssetImages({
-    required String id,
-    required String title,
-  }) {
-    const all = <String>[
-      'assets/images/home1.png',
-      'assets/images/home2.png',
-      'assets/images/home3.png',
-      'assets/images/home4.png',
-    ];
-
-    final normalizedTitle = title.toLowerCase();
-    if (normalizedTitle.contains('cozy')) {
+  List<String> _fallbackAssetImages({required String title}) {
+    final normalizedTitle = title.toLowerCase().trim();
+    if (normalizedTitle == 'cozy apartment near tashkent metro') {
       return const <String>[
         'assets/images/home1.png',
         'assets/images/home2.png',
         'assets/images/home4.png',
       ];
     }
-    if (normalizedTitle.contains('loft')) {
+    if (normalizedTitle == 'modern loft in city center') {
       return const <String>[
         'assets/images/home2.png',
         'assets/images/home3.png',
         'assets/images/home1.png',
       ];
     }
-    if (normalizedTitle.contains('family')) {
+    if (normalizedTitle == 'family apartment near magic city') {
       return const <String>[
         'assets/images/home4.png',
         'assets/images/home1.png',
         'assets/images/home2.png',
       ];
     }
-    if (normalizedTitle.contains('room')) {
+    if (normalizedTitle == 'quiet room with balcony in central tashkent') {
       return const <String>[
         'assets/images/home3.png',
         'assets/images/home2.png',
       ];
     }
-
-    final hash = id.codeUnits.fold<int>(0, (sum, item) => sum + item);
-    final start = hash % all.length;
-    return List<String>.generate(
-      3,
-      (index) => all[(start + index) % all.length],
-      growable: false,
-    );
+    return const <String>[];
   }
 
   List<ListingAmenity> _fallbackAmenities({
@@ -364,12 +417,98 @@ class ApiListingsRepository implements ListingsRepository {
     return amenities.toList(growable: false);
   }
 
+  List<ListingAmenity> _mapAmenitiesFromApi(Object? raw) {
+    if (raw is! List) {
+      return const <ListingAmenity>[];
+    }
+    final items = <ListingAmenity>[];
+    for (final value in raw) {
+      final amenity = _mapAmenityFromApi(value?.toString() ?? '');
+      if (amenity != null && !items.contains(amenity)) {
+        items.add(amenity);
+      }
+    }
+    return items;
+  }
+
+  List<String> _extractImageUrls(Map<String, dynamic> payload) {
+    final urls = <String>[];
+
+    void addCandidate(Object? value) {
+      final normalized = _normalizeImageUrl(value?.toString() ?? '');
+      if (normalized.isNotEmpty && !urls.contains(normalized)) {
+        urls.add(normalized);
+      }
+    }
+
+    void addFromDynamic(Object? raw) {
+      if (raw is List) {
+        for (final item in raw) {
+          if (item is Map) {
+            addCandidate(_pickImageValue(item));
+          } else {
+            addCandidate(item);
+          }
+        }
+        return;
+      }
+      if (raw is Map) {
+        addCandidate(_pickImageValue(raw));
+        return;
+      }
+      addCandidate(raw);
+    }
+
+    addFromDynamic(payload['images']);
+    if (urls.isNotEmpty) {
+      return urls;
+    }
+
+    const aliases = <String>['image_urls', 'imageUrls', 'photos', 'photo_urls'];
+    for (final key in aliases) {
+      addFromDynamic(payload[key]);
+      if (urls.isNotEmpty) {
+        break;
+      }
+    }
+    return urls;
+  }
+
+  Object? _pickImageValue(Map<dynamic, dynamic> payload) {
+    const keys = <String>['image', 'image_url', 'url', 'src', 'file'];
+    for (final key in keys) {
+      final value = payload[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        return value;
+      }
+    }
+    return null;
+  }
+
   String _normalizeImageUrl(String raw) {
     final value = raw.trim();
     if (value.isEmpty) {
       return '';
     }
     if (value.startsWith('http://') || value.startsWith('https://')) {
+      final uri = Uri.tryParse(value);
+      final baseUri = Uri.tryParse(_apiClient.baseUrl);
+      if (uri == null || baseUri == null) {
+        return value;
+      }
+      final localHosts = <String>{'127.0.0.1', 'localhost'};
+      if (!uri.hasPort &&
+          localHosts.contains(uri.host) &&
+          baseUri.hasPort &&
+          localHosts.contains(baseUri.host)) {
+        return uri
+            .replace(
+              scheme: baseUri.scheme,
+              host: baseUri.host,
+              port: baseUri.port,
+            )
+            .toString();
+      }
       return value;
     }
 
@@ -377,10 +516,96 @@ class ApiListingsRepository implements ListingsRepository {
     final apiIndex = base.indexOf('/api');
     final origin = apiIndex > 0 ? base.substring(0, apiIndex) : base;
 
-    if (value.startsWith('/')) {
-      return '$origin$value';
+    String relativePath = value;
+    if (!relativePath.startsWith('/')) {
+      relativePath = '/$relativePath';
     }
-    return '$origin/$value';
+    if (!relativePath.startsWith('/media/')) {
+      relativePath = '/media${relativePath.startsWith('/') ? '' : '/'}${relativePath.replaceFirst(RegExp(r'^/+'), '')}';
+      relativePath = '/${relativePath.replaceFirst(RegExp(r'^/+'), '')}';
+    }
+
+    return '$origin$relativePath';
+  }
+
+  (double, double)? _parseCoordinates(String value) {
+    final match = RegExp(r'^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$')
+        .firstMatch(value);
+    if (match == null) {
+      return null;
+    }
+    final lat = double.tryParse(match.group(1) ?? '');
+    final lng = double.tryParse(match.group(2) ?? '');
+    if (lat == null || lng == null) {
+      return null;
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return null;
+    }
+    return (lat, lng);
+  }
+
+  int? _parseInt(Object? value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  MediaType _contentTypeForFileName(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) {
+      return MediaType('image', 'png');
+    }
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return MediaType('image', 'jpeg');
+    }
+    if (lower.endsWith('.webp')) {
+      return MediaType('image', 'webp');
+    }
+    if (lower.endsWith('.gif')) {
+      return MediaType('image', 'gif');
+    }
+    return MediaType('image', 'jpeg');
+  }
+
+  String _normalizeImageFileName(String originalName) {
+    final trimmed = originalName.trim();
+    if (trimmed.isEmpty) {
+      return 'listing_photo.jpg';
+    }
+    if (trimmed.contains('.')) {
+      return trimmed;
+    }
+    return '$trimmed.jpg';
+  }
+
+  String? _extractCoordinatesFromLocation(String location) {
+    final match = RegExp(r'(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)').firstMatch(location);
+    if (match == null) {
+      return null;
+    }
+    final lat = double.tryParse(match.group(1) ?? '');
+    final lng = double.tryParse(match.group(2) ?? '');
+    if (lat == null || lng == null) {
+      return null;
+    }
+    return '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}';
+  }
+
+  String? _extractCoordinatesFromPayload(Map<String, dynamic> payload) {
+    final lat = double.tryParse(payload['latitude']?.toString() ?? '');
+    final lng = double.tryParse(payload['longitude']?.toString() ?? '');
+    if (lat == null || lng == null) {
+      return null;
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return null;
+    }
+    return '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}';
   }
 
   ListingType _mapTypeFromApi(String? value) {
@@ -396,6 +621,37 @@ class ApiListingsRepository implements ListingsRepository {
     }
   }
 
+  ListingAmenity? _mapAmenityFromApi(String value) {
+    switch (value.trim()) {
+      case 'wifi':
+        return ListingAmenity.wifi;
+      case 'airConditioner':
+        return ListingAmenity.airConditioner;
+      case 'kitchen':
+        return ListingAmenity.kitchen;
+      case 'washingMachine':
+        return ListingAmenity.washingMachine;
+      case 'parking':
+        return ListingAmenity.parking;
+      case 'privateBathroom':
+        return ListingAmenity.privateBathroom;
+      case 'kidsAllowed':
+        return ListingAmenity.kidsAllowed;
+      case 'petsAllowed':
+        return ListingAmenity.petsAllowed;
+      case 'womenOnly':
+        return ListingAmenity.womenOnly;
+      case 'menOnly':
+        return ListingAmenity.menOnly;
+      case 'hostLivesTogether':
+        return ListingAmenity.hostLivesTogether;
+      case 'instantConfirm':
+        return ListingAmenity.instantConfirm;
+      default:
+        return null;
+    }
+  }
+
   String _mapTypeToApi(ListingType type) {
     switch (type) {
       case ListingType.room:
@@ -406,6 +662,35 @@ class ApiListingsRepository implements ListingsRepository {
         return 'home';
       case ListingType.freeStay:
         return 'free_stay';
+    }
+  }
+
+  String _mapAmenityToApi(ListingAmenity amenity) {
+    switch (amenity) {
+      case ListingAmenity.wifi:
+        return 'wifi';
+      case ListingAmenity.airConditioner:
+        return 'airConditioner';
+      case ListingAmenity.kitchen:
+        return 'kitchen';
+      case ListingAmenity.washingMachine:
+        return 'washingMachine';
+      case ListingAmenity.parking:
+        return 'parking';
+      case ListingAmenity.privateBathroom:
+        return 'privateBathroom';
+      case ListingAmenity.kidsAllowed:
+        return 'kidsAllowed';
+      case ListingAmenity.petsAllowed:
+        return 'petsAllowed';
+      case ListingAmenity.womenOnly:
+        return 'womenOnly';
+      case ListingAmenity.menOnly:
+        return 'menOnly';
+      case ListingAmenity.hostLivesTogether:
+        return 'hostLivesTogether';
+      case ListingAmenity.instantConfirm:
+        return 'instantConfirm';
     }
   }
 
@@ -475,4 +760,8 @@ class ApiListingsRepository implements ListingsRepository {
       failure: _throwFailure,
     );
   }
+}
+
+extension on List<ListingAmenity> {
+  List<ListingAmenity>? takeIfNotEmpty() => isEmpty ? null : this;
 }

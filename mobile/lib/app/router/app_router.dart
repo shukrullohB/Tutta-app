@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme/app_colors.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/auth/presentation/screens/auth_screen.dart';
 import '../../features/auth/presentation/screens/onboarding_screen.dart';
@@ -108,7 +109,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: RouteNames.home,
-        builder: (context, state) => const HomeShellScreen(),
+        builder: (context, state) => HomeShellScreen(
+          key: ValueKey('home:${state.uri.toString()}'),
+          initialTab: state.uri.queryParameters['tab'],
+        ),
+      ),
+      GoRoute(
+        path: RouteNames.homeListings,
+        builder: (context, state) => const HomeShellScreen(
+          key: ValueKey('home:listings'),
+          initialTab: 'listings',
+        ),
       ),
       GoRoute(
         path: RouteNames.search,
@@ -272,7 +283,7 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Stack(
           children: [
@@ -288,7 +299,7 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
-                        colors: [Color(0x1F858C9F), Colors.transparent],
+                        colors: [Color(0x30F15A24), Colors.transparent],
                       ),
                     ),
                   ),
@@ -302,7 +313,7 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
                   Text(
                     'Tutta',
                     style: const TextStyle(
-                      color: Color(0xFF072A73),
+                      color: AppColors.primaryDeep,
                       fontSize: 68,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -1.2,
@@ -312,7 +323,7 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
                   Text(
                     'DIGITAL CONCIERGE',
                     style: const TextStyle(
-                      color: Color(0xFF7A8192),
+                      color: AppColors.textMuted,
                       fontSize: 18,
                       letterSpacing: 5.5,
                       fontWeight: FontWeight.w500,
@@ -322,7 +333,7 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
                   Text(
                     'PREPARING YOUR STAY',
                     style: const TextStyle(
-                      color: Color(0xFF8E94A2),
+                      color: AppColors.textSoft,
                       fontSize: 15,
                       letterSpacing: 2,
                       fontWeight: FontWeight.w600,

@@ -2,6 +2,21 @@ from rest_framework import serializers
 
 from .models import AvailabilityDay, Listing, ListingImage
 
+LISTING_AMENITIES = {
+    'wifi',
+    'airConditioner',
+    'kitchen',
+    'washingMachine',
+    'parking',
+    'privateBathroom',
+    'kidsAllowed',
+    'petsAllowed',
+    'womenOnly',
+    'menOnly',
+    'hostLivesTogether',
+    'instantConfirm',
+}
+
 
 class ListingImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -45,6 +60,8 @@ class ListingSerializer(serializers.ModelSerializer):
             'location',
             'city',
             'district',
+            'latitude',
+            'longitude',
             'landmark',
             'metro',
             'listing_type',
@@ -52,6 +69,7 @@ class ListingSerializer(serializers.ModelSerializer):
             'max_guests',
             'min_days',
             'max_days',
+            'amenities',
             'show_phone',
             'free_stay_profile',
             'is_free_stay',
@@ -103,7 +121,18 @@ class ListingCreateSerializer(serializers.ModelSerializer):
         allow_empty=True,
         write_only=True,
     )
+    remove_image_urls = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+        write_only=True,
+    )
     free_stay_profile = serializers.JSONField(required=False)
+    amenities = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+    )
 
     class Meta:
         model = Listing
@@ -114,6 +143,8 @@ class ListingCreateSerializer(serializers.ModelSerializer):
             'location',
             'city',
             'district',
+            'latitude',
+            'longitude',
             'landmark',
             'metro',
             'listing_type',
@@ -121,10 +152,12 @@ class ListingCreateSerializer(serializers.ModelSerializer):
             'max_guests',
             'min_days',
             'max_days',
+            'amenities',
             'show_phone',
             'free_stay_profile',
             'image_files',
             'remove_image_ids',
+            'remove_image_urls',
             'created_at',
             'updated_at',
         )
@@ -140,6 +173,14 @@ class ListingCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('max_guests must be at least 1.')
         return value
 
+    def validate_amenities(self, value):
+        invalid = [item for item in value if item not in LISTING_AMENITIES]
+        if invalid:
+            raise serializers.ValidationError(
+                f'Unsupported amenities: {", ".join(invalid)}.'
+            )
+        return list(dict.fromkeys(value))
+
     def validate(self, attrs):
         listing_type = attrs.get('listing_type', getattr(self.instance, 'listing_type', None))
         min_days = attrs.get('min_days', getattr(self.instance, 'min_days', 1))
@@ -148,6 +189,15 @@ class ListingCreateSerializer(serializers.ModelSerializer):
         city = attrs.get('city', getattr(self.instance, 'city', ''))
         district = attrs.get('district', getattr(self.instance, 'district', ''))
         location = attrs.get('location', getattr(self.instance, 'location', ''))
+        latitude = attrs.get('latitude', getattr(self.instance, 'latitude', None))
+        longitude = attrs.get('longitude', getattr(self.instance, 'longitude', None))
+
+        if (latitude is None) != (longitude is None):
+            raise serializers.ValidationError('latitude and longitude must be provided together.')
+        if latitude is not None and (latitude < -90 or latitude > 90):
+            raise serializers.ValidationError('latitude must be between -90 and 90.')
+        if longitude is not None and (longitude < -180 or longitude > 180):
+            raise serializers.ValidationError('longitude must be between -180 and 180.')
 
         if min_days < 1:
             raise serializers.ValidationError('min_days must be at least 1.')
@@ -183,6 +233,9 @@ class ListingCreateSerializer(serializers.ModelSerializer):
                 else normalized_city
             )
 
+        if attrs.get('amenities') is None:
+            attrs['amenities'] = getattr(self.instance, 'amenities', [])
+
         return attrs
 
     def validate_image_files(self, value):
@@ -200,10 +253,15 @@ class ListingCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         image_files = validated_data.pop('image_files', [])
         validated_data.pop('remove_image_ids', None)
-        validated_data['is_active'] = False
-        validated_data['moderation_status'] = Listing.ModerationStatus.DRAFT
+        validated_data.pop('remove_image_urls', None)
+        user = self.context['request'].user
+        if getattr(user, 'role', None) != user.Role.HOST:
+            user.role = user.Role.HOST
+            user.save(update_fields=['role'])
+        validated_data['is_active'] = True
+        validated_data['moderation_status'] = Listing.ModerationStatus.APPROVED
         validated_data['moderation_note'] = ''
-        listing = Listing.objects.create(host=self.context['request'].user, **validated_data)
+        listing = Listing.objects.create(host=user, **validated_data)
         for image in image_files:
             ListingImage.objects.create(listing=listing, image=image)
         return listing
@@ -211,6 +269,7 @@ class ListingCreateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         image_files = validated_data.pop('image_files', [])
         remove_image_ids = validated_data.pop('remove_image_ids', [])
+        remove_image_urls = validated_data.pop('remove_image_urls', [])
 
         review_fields = {
             'title',
@@ -234,13 +293,26 @@ class ListingCreateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
 
         if should_recheck:
-            instance.moderation_status = Listing.ModerationStatus.PENDING
+            instance.moderation_status = Listing.ModerationStatus.APPROVED
+            instance.is_active = True
             instance.moderation_note = ''
 
         instance.save()
 
         if remove_image_ids:
             ListingImage.objects.filter(listing=instance, id__in=remove_image_ids).delete()
+
+        if remove_image_urls:
+            normalized_urls = []
+            for value in remove_image_urls:
+                raw = (value or '').strip()
+                if not raw:
+                    continue
+                if '/media/' in raw:
+                    raw = raw.split('/media/', 1)[1]
+                normalized_urls.append(raw.lstrip('/'))
+            if normalized_urls:
+                ListingImage.objects.filter(listing=instance, image__in=normalized_urls).delete()
 
         for image in image_files:
             ListingImage.objects.create(listing=instance, image=image)

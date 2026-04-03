@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/errors/app_exception.dart';
 import '../../../../core/l10n/ru_fallbacks.dart';
 import '../../../../core/enums/app_role.dart';
 import '../../../auth/application/auth_controller.dart';
@@ -21,23 +22,31 @@ import '../../application/app_session_controller.dart';
 final _homeExploreListingsProvider = FutureProvider<List<Listing>>((ref) async {
   final hasPremium =
       ref.watch(authControllerProvider).valueOrNull?.user?.isPremium ?? false;
-  final items = await ref
-      .watch(listingsRepositoryProvider)
-      .search(
-        params: const ListingSearchParams(
-          city: 'Tashkent',
-          district: '',
-          guests: 1,
-          includeFreeStay: false,
-        ),
-        hasPremium: hasPremium,
-      );
-  if (hasPremium) {
-    return items;
+  final params = const ListingSearchParams(
+    city: 'Tashkent',
+    district: '',
+    guests: 1,
+    includeFreeStay: false,
+  );
+  final localItems = ref.watch(locallyCreatedHostListingsProvider);
+  try {
+    final items = await ref
+        .watch(listingsRepositoryProvider)
+        .search(params: params, hasPremium: hasPremium);
+    return mergeCreatedListings(remote: items, local: localItems)
+        .where(
+          (listing) =>
+              matchesSearchParams(listing, params, hasPremium: hasPremium),
+        )
+        .toList(growable: false);
+  } on AppException {
+    return localItems
+        .where(
+          (listing) =>
+              matchesSearchParams(listing, params, hasPremium: hasPremium),
+        )
+        .toList(growable: false);
   }
-  return items
-      .where((listing) => listing.type != ListingType.freeStay)
-      .toList(growable: false);
 });
 
 final _homeFavoriteListingsProvider = FutureProvider<List<Listing>>((
@@ -70,7 +79,9 @@ final _hostBookingsProvider = FutureProvider<List<Booking>>((ref) async {
 });
 
 class HomeShellScreen extends ConsumerStatefulWidget {
-  const HomeShellScreen({super.key});
+  const HomeShellScreen({super.key, this.initialTab});
+
+  final String? initialTab;
 
   @override
   ConsumerState<HomeShellScreen> createState() => _HomeShellScreenState();
@@ -78,6 +89,21 @@ class HomeShellScreen extends ConsumerStatefulWidget {
 
 class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
   int _index = 0;
+  String? _initializedTabToken;
+
+  @override
+  void initState() {
+    super.initState();
+    final role = ref.read(appSessionControllerProvider).activeRole;
+    if (role == null) {
+      return;
+    }
+    final requestedIndex = _routeTabToIndex(role, widget.initialTab);
+    if (requestedIndex != null) {
+      _index = requestedIndex;
+      _initializedTabToken = '${role.name}:${widget.initialTab}';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +174,37 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
 
     final tabs = _tabsForRole(role);
     final destinations = _destinationsForRole(context, role);
+    final requestedTab = widget.initialTab;
+    final pendingTab = session.pendingHomeTab;
+    final effectiveTab = pendingTab ?? requestedTab;
+    final requestedIndex = _routeTabToIndex(role, effectiveTab);
+    final requestedToken = effectiveTab == null
+        ? null
+        : '${role.name}:$effectiveTab';
     final selectedIndex = _index >= tabs.length ? 0 : _index;
+
+    if (requestedIndex != null &&
+        requestedToken != null &&
+        requestedToken != _initializedTabToken &&
+        requestedIndex != _index) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _index = requestedIndex;
+            _initializedTabToken = requestedToken;
+          });
+          ref.read(appSessionControllerProvider.notifier).clearPendingHomeTab();
+        }
+      });
+    } else if (requestedToken != null &&
+        requestedToken != _initializedTabToken) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() => _initializedTabToken = requestedToken);
+          ref.read(appSessionControllerProvider.notifier).clearPendingHomeTab();
+        }
+      });
+    }
 
     if (selectedIndex != _index) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -416,6 +472,21 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
       context.go(RouteNames.auth);
     }
   }
+
+  int? _routeTabToIndex(AppRole role, String? tab) {
+    switch (tab) {
+      case 'listings':
+        return role == AppRole.host ? 1 : null;
+      case 'bookings':
+        return 2;
+      case 'chats':
+        return 3;
+      case 'profile':
+        return 4;
+      default:
+        return null;
+    }
+  }
 }
 
 class _ExploreTab extends ConsumerWidget {
@@ -495,7 +566,7 @@ class _ExploreTab extends ConsumerWidget {
                         child: _ListingPreviewTile(
                           listing: listing,
                           onTap: () => context.push(
-                            '${RouteNames.listingDetails}/${listing.id}',
+                            RouteNames.listingDetailsById(listing.id),
                           ),
                         ),
                       ),
@@ -603,7 +674,7 @@ class _FavoritesTab extends ConsumerWidget {
                             listing: listing,
                             highlightFavorite: true,
                             onTap: () => context.push(
-                              '${RouteNames.listingDetails}/${listing.id}',
+                              RouteNames.listingDetailsById(listing.id),
                             ),
                           ),
                         ),
@@ -722,6 +793,9 @@ class _HostDashboardTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authControllerProvider).valueOrNull?.user;
+    final listingsAsync = ref.watch(hostOwnedListingsProvider);
+    final AsyncValue<dynamic>? diagnosticsAsync = null;
+    final syncInfo = ref.watch(hostListingsSyncInfoProvider);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
@@ -799,16 +873,213 @@ class _HostDashboardTab extends ConsumerWidget {
             ],
           ),
         ),
+        if (diagnosticsAsync != null) ...[
+          const SizedBox(height: 18),
+          _SectionCard(
+            title: _copy(
+              context,
+              en: 'Debug diagnostics',
+              ru: 'Диагностика',
+              uz: 'Diagnostika',
+            ),
+            subtitle: _copy(
+              context,
+              en: 'Current listings source and backend mode for local debugging.',
+              ru: 'Текущий источник объявлений и режим базы для локальной отладки.',
+              uz: 'Mahalliy tekshiruv uchun e’lon manbai va backend rejimi.',
+            ),
+            child: diagnosticsAsync.when(
+              loading: () => const _LoadingBlock(),
+              error: (error, _) => _InfoBanner(
+                icon: Icons.error_outline,
+                text: error.toString(),
+              ),
+              data: (diagnostics) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _InfoLine(
+                    icon: Icons.cloud_outlined,
+                    label: _copy(
+                      context,
+                      en: 'Listings source',
+                      ru: 'Источник объявлений',
+                      uz: 'E’lon manbai',
+                    ),
+                    value: diagnostics.source,
+                  ),
+                  const SizedBox(height: 12),
+                  _InfoLine(
+                    icon: Icons.link_rounded,
+                    label: _copy(
+                      context,
+                      en: 'API base URL',
+                      ru: 'Базовый API URL',
+                      uz: 'API manzili',
+                    ),
+                    value: diagnostics.apiBaseUrl,
+                  ),
+                  const SizedBox(height: 12),
+                  _InfoLine(
+                    icon: Icons.storage_rounded,
+                    label: _copy(
+                      context,
+                      en: 'Backend storage',
+                      ru: 'Хранилище backend',
+                      uz: 'Backend saqlash turi',
+                    ),
+                    value: diagnostics.backendEngine,
+                  ),
+                  ...[
+                    const SizedBox(height: 12),
+                    _InfoLine(
+                      icon: Icons.sync_problem_rounded,
+                      label: _copy(
+                        context,
+                        en: 'Listings sync',
+                        ru: 'Синхронизация объявлений',
+                        uz: 'E\'lonlar sinxi',
+                      ),
+                      value: syncInfo.message == null
+                          ? syncInfo.state.name
+                          : '${syncInfo.state.name}: ${syncInfo.message}',
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 18),
+        _SectionCard(
+          title: _copy(
+            context,
+            en: 'My listings',
+            ru: 'Мои объявления',
+            uz: 'Mening e\'lonlarim',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Newly created stays appear here right away, and you can open or edit them from the dashboard.',
+            ru: 'Новые объявления появляются здесь сразу, и их можно открыть или отредактировать прямо с панели.',
+            uz: 'Yangi e\'lonlar shu yerda darhol chiqadi va ularni paneldan ochish yoki tahrirlash mumkin.',
+          ),
+          child: listingsAsync.when(
+            loading: () => const _LoadingBlock(),
+            error: (error, _) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  error.toString(),
+                  style: const TextStyle(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () => ref.invalidate(hostOwnedListingsProvider),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(
+                    _copy(
+                      context,
+                      en: 'Reload',
+                      ru: 'Обновить',
+                      uz: 'Qayta yuklash',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            data: (listings) {
+              final showSyncWarning =
+                  syncInfo.state == HostListingsSyncState.warning &&
+                  (syncInfo.message?.isNotEmpty ?? false);
+              if (listings.isEmpty) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (showSyncWarning) ...[
+                      _InfoBanner(
+                        icon: Icons.sync_problem_rounded,
+                        text: syncInfo.message!,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    Text(
+                      _copy(
+                        context,
+                        en: 'No listings yet. Create your first stay and it will show up here.',
+                        ru: 'Пока объявлений нет. Создайте первое жильё, и оно появится здесь.',
+                        uz: 'Hozircha e\'lon yo\'q. Birinchi turar joyni yarating, u shu yerda ko\'rinadi.',
+                      ),
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    FilledButton.icon(
+                      onPressed: () => context.push(RouteNames.createListing),
+                      icon: const Icon(Icons.add_home_work_outlined),
+                      label: Text(
+                        _copy(
+                          context,
+                          en: 'Create listing',
+                          ru: 'Создать объявление',
+                          uz: 'E\'lon yaratish',
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              final preview = listings.take(2).toList(growable: false);
+              return Column(
+                children: [
+                  if (showSyncWarning) ...[
+                    _InfoBanner(
+                      icon: Icons.sync_problem_rounded,
+                      text: syncInfo.message!,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  for (var i = 0; i < preview.length; i++) ...[
+                    _HostListingTile(listing: preview[i]),
+                    if (i != preview.length - 1) const SizedBox(height: 12),
+                  ],
+                  if (listings.length > 2) ...[
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => context.go(RouteNames.homeListings),
+                        icon: const Icon(Icons.grid_view_rounded),
+                        label: Text(
+                          _copy(
+                            context,
+                            en: 'Open all listings',
+                            ru: 'Открыть все объявления',
+                            uz: 'Barcha e\'lonlarni ochish',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
       ],
     );
   }
 }
 
-class _HostListingsTab extends StatelessWidget {
+class _HostListingsTab extends ConsumerWidget {
   const _HostListingsTab();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listingsAsync = ref.watch(hostOwnedListingsProvider);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: [
@@ -821,62 +1092,130 @@ class _HostListingsTab extends StatelessWidget {
           ),
           subtitle: _copy(
             context,
-            en: 'Use the stable host actions below while the full host flow is being cleaned up.',
-            ru: 'Используйте стабильные действия ниже, пока мы дочищаем полный host flow.',
-            uz: 'To\'liq host flow tozalanayotganda quyidagi barqaror amallardan foydalaning.',
+            en: 'All of your stays appear here, including drafts that are still invisible to guests.',
+            ru: 'Здесь отображаются все ваши варианты жилья, включая черновики, которые пока не видны гостям.',
+            uz: 'Bu yerda mehmonlarga hali ko\'rinmaydigan qoralamalar bilan birga barcha e\'lonlaringiz chiqadi.',
           ),
         ),
         const SizedBox(height: 14),
         _SectionCard(
           title: _copy(
             context,
-            en: 'Host tools',
-            ru: 'Инструменты хоста',
-            uz: 'Host vositalari',
+            en: 'Your listings',
+            ru: 'Ваши объявления',
+            uz: 'Sizning e\'lonlaringiz',
           ),
           subtitle: _copy(
             context,
-            en: 'Fast access to the most important host actions.',
-            ru: 'Быстрый доступ к самым важным действиям хоста.',
-            uz: 'Eng muhim host amallariga tez kirish.',
+            en: 'Open, edit, and track the visibility of each stay.',
+            ru: 'Открывайте, редактируйте и следите за статусом видимости каждого варианта жилья.',
+            uz: 'Har bir turar joyni oching, tahrirlang va ko\'rinish holatini kuzating.',
           ),
-          child: Column(
-            children: [
-              _ActionTile(
-                icon: Icons.add_home_work_outlined,
-                title: _copy(
-                  context,
-                  en: 'Create a new listing',
-                  ru: 'Создать новое объявление',
-                  uz: 'Yangi e\'lon yaratish',
+          child: listingsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, _) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  error.toString(),
+                  style: const TextStyle(color: AppColors.textMuted),
                 ),
-                subtitle: _copy(
-                  context,
-                  en: 'Start the multi-step listing flow.',
-                  ru: 'Запустить пошаговый сценарий создания объявления.',
-                  uz: 'Bosqichma-bosqich e\'lon yaratish jarayonini boshlash.',
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () => ref.invalidate(hostOwnedListingsProvider),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(
+                    _copy(
+                      context,
+                      en: 'Reload',
+                      ru: 'Обновить',
+                      uz: 'Qayta yuklash',
+                    ),
+                  ),
                 ),
-                onTap: () => context.push(RouteNames.createListing),
-              ),
-              const SizedBox(height: 12),
-              _ActionTile(
-                icon: Icons.assignment_turned_in_outlined,
-                title: _copy(
-                  context,
-                  en: 'Open booking requests',
-                  ru: 'Открыть заявки на бронь',
-                  uz: 'Bron so\'rovlarini ochish',
-                ),
-                subtitle: _copy(
-                  context,
-                  en: 'Review and respond to incoming requests.',
-                  ru: 'Смотрите входящие заявки и отвечайте на них.',
-                  uz: 'Kiruvchi so\'rovlarni ko\'rib chiqing va javob bering.',
-                ),
-                onTap: () => context.push(RouteNames.hostRequests),
-              ),
-            ],
+              ],
+            ),
+            data: (listings) {
+              if (listings.isEmpty) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _copy(
+                        context,
+                        en: 'You have not created any stays yet.',
+                        ru: 'Вы пока не создали ни одного варианта жилья.',
+                        uz: 'Siz hali birorta turar joy yaratmagansiz.',
+                      ),
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    FilledButton.icon(
+                      onPressed: () => context.push(RouteNames.createListing),
+                      icon: const Icon(Icons.add_home_work_outlined),
+                      label: Text(
+                        _copy(
+                          context,
+                          en: 'Create listing',
+                          ru: 'Создать объявление',
+                          uz: 'E\'lon yaratish',
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return Column(
+                children: [
+                  for (var i = 0; i < listings.length; i++) ...[
+                    _HostListingTile(listing: listings[i]),
+                    if (i != listings.length - 1) const SizedBox(height: 12),
+                  ],
+                ],
+              );
+            },
           ),
+        ),
+        const SizedBox(height: 14),
+        _ActionTile(
+          icon: Icons.add_home_work_outlined,
+          title: _copy(
+            context,
+            en: 'Create a new listing',
+            ru: 'Создать новое объявление',
+            uz: 'Yangi e\'lon yaratish',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Start the multi-step listing flow.',
+            ru: 'Запустить пошаговый сценарий создания объявления.',
+            uz: 'Bosqichma-bosqich e\'lon yaratish jarayonini boshlash.',
+          ),
+          onTap: () => context.push(RouteNames.createListing),
+        ),
+        const SizedBox(height: 12),
+        _ActionTile(
+          icon: Icons.assignment_turned_in_outlined,
+          title: _copy(
+            context,
+            en: 'Open booking requests',
+            ru: 'Открыть заявки на бронь',
+            uz: 'Bron so\'rovlarini ochish',
+          ),
+          subtitle: _copy(
+            context,
+            en: 'Review and respond to incoming requests.',
+            ru: 'Смотрите входящие заявки и отвечайте на них.',
+            uz: 'Kiruvchi so\'rovlarni ko\'rib chiqing va javob bering.',
+          ),
+          onTap: () => context.push(RouteNames.hostRequests),
         ),
       ],
     );
@@ -1589,6 +1928,204 @@ class _ListingPreviewTile extends ConsumerWidget {
   }
 }
 
+class _HostListingTile extends StatelessWidget {
+  const _HostListingTile({required this.listing});
+
+  final Listing listing;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDraft = !listing.isActive;
+    final hasUsableRoute = _hasUsableListingRoute(listing);
+    final title = listing.title.trim().isEmpty
+        ? _copy(
+            context,
+            en: 'Listing is syncing',
+            ru: 'Объявление синхронизируется',
+            uz: 'E\'lon sinxronlanmoqda',
+          )
+        : listing.title;
+    final location = _listingLocation(listing).trim().isEmpty
+        ? _copy(
+            context,
+            en: 'Location is syncing',
+            ru: 'Локация синхронизируется',
+            uz: 'Manzil sinxronlanmoqda',
+          )
+        : _listingLocation(listing);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: SizedBox(
+                  width: 86,
+                  height: 86,
+                  child: _ListingImagePreview(
+                    imageUrl: listing.imageUrls.isEmpty
+                        ? null
+                        : listing.imageUrls.first,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      location,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: AppColors.textMuted),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _HostListingStatusChip(
+                          label: isDraft
+                              ? _copy(
+                                  context,
+                                  en: 'Draft',
+                                  ru: 'Черновик',
+                                  uz: 'Qoralama',
+                                )
+                              : _copy(
+                                  context,
+                                  en: 'Visible to guests',
+                                  ru: 'Видно гостям',
+                                  uz: 'Mehmonlarga ko\'rinadi',
+                                ),
+                          active: !isDraft,
+                        ),
+                        _HostListingStatusChip(
+                          label: _listingPriceLabel(context, listing),
+                          active: true,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            !hasUsableRoute
+                ? _copy(
+                    context,
+                    en: 'This listing was saved, but its full details are still syncing. Refresh in a moment or open Edit later.',
+                    ru: 'Объявление сохранено, но его полные данные ещё синхронизируются. Обновите экран чуть позже или откройте редактирование позже.',
+                    uz: 'E\'lon saqlandi, lekin uning to\'liq ma\'lumotlari hali sinxronlanmoqda. Birozdan so\'ng yangilang yoki keyinroq tahrirlashni oching.',
+                  )
+                : isDraft
+                ? _copy(
+                    context,
+                    en: 'This listing is saved as a draft and is not visible in public search yet.',
+                    ru: 'Это объявление сохранено как черновик и пока не видно в публичном поиске.',
+                    uz: 'Bu e\'lon qoralama sifatida saqlangan va hozircha ommaviy qidiruvda ko\'rinmaydi.',
+                  )
+                : _copy(
+                    context,
+                    en: 'This listing is already visible in your host inventory.',
+                    ru: 'Это объявление уже отображается в вашем списке хозяина.',
+                    uz: 'Bu e\'lon host ro\'yxatingizda allaqachon ko\'rinadi.',
+                  ),
+            style: const TextStyle(color: AppColors.textMuted, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: hasUsableRoute
+                      ? () =>
+                          context.push(RouteNames.listingDetailsById(listing.id))
+                      : null,
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: Text(
+                    _copy(context, en: 'Open', ru: 'Открыть', uz: 'Ochish'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: hasUsableRoute
+                      ? () => context.push(RouteNames.editListingById(listing.id))
+                      : null,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: Text(
+                    _copy(
+                      context,
+                      en: 'Edit',
+                      ru: 'Изменить',
+                      uz: 'Tahrirlash',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HostListingStatusChip extends StatelessWidget {
+  const _HostListingStatusChip({required this.label, required this.active});
+
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: active ? AppColors.primarySoft : AppColors.surfaceTint,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: active ? AppColors.primarySoftStrong : AppColors.border,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: active ? AppColors.primaryDeep : AppColors.textSoft,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+}
+
 class _ListingImagePreview extends StatelessWidget {
   const _ListingImagePreview({required this.imageUrl});
 
@@ -1936,7 +2473,14 @@ String _listingLocation(Listing listing) {
     listing.city.trim(),
     if (listing.district.trim().isNotEmpty) listing.district.trim(),
   ];
-  return parts.join(', ');
+  return parts.where((part) => part.isNotEmpty).join(', ');
+}
+
+bool _hasUsableListingRoute(Listing listing) {
+  return listing.id.trim().isNotEmpty &&
+      listing.title.trim().isNotEmpty &&
+      listing.city.trim().isNotEmpty &&
+      listing.district.trim().isNotEmpty;
 }
 
 String _copy(

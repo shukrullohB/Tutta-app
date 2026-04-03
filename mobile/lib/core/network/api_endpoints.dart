@@ -1,6 +1,8 @@
 class ApiEndpoints {
   const ApiEndpoints._();
 
+  static const health = '/health';
+
   // Backend auth contract
   static const authRegister = '/auth/register';
   static const authLogin = '/auth/login';
@@ -17,10 +19,10 @@ class ApiEndpoints {
   static const authSignOut = '/auth/sign-out';
 
   // Listings contract
-  static const listings = '/listings';
+  static const listings = '/listings/';
   static String listingsByHost(String hostId) => '$listings?host=$hostId';
 
-  static String listingById(String id) => '$listings/$id';
+  static String listingById(String id) => '$listings$id';
 
   static String listingManage(String id) => '${listingById(id)}/manage';
 
@@ -32,9 +34,9 @@ class ApiEndpoints {
       '${listingById(id)}/availability';
 
   // Bookings contract
-  static const bookings = '/bookings';
+  static const bookings = '/bookings/';
 
-  static String bookingById(String bookingId) => '$bookings/$bookingId';
+  static String bookingById(String bookingId) => '$bookings$bookingId';
 
   static String bookingsByRole(String role) => '$bookings?role=$role';
 
@@ -86,12 +88,12 @@ class ApiEndpoints {
   static String notificationsDeviceUnregister() =>
       '$notifications/devices/unregister';
 
-  static const reviews = '/reviews';
+  static const reviews = '/reviews/';
 
   static String reviewsByListing(String listingId) =>
       '$reviews?listing_id=$listingId';
 
-  static String reviewById(String reviewId) => '$reviews/$reviewId';
+  static String reviewById(String reviewId) => '$reviews$reviewId';
 
   // Chat contract
   static const chatThreads = '/chat/threads';

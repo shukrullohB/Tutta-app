@@ -5,6 +5,7 @@ abstract final class RouteNames {
   static const authVerify = '/auth/verify';
   static const roleSelector = '/role-selector';
   static const home = '/home';
+  static const homeListings = '/home/listings';
   static const search = '/search';
   static const searchMap = '/search/map';
   static const listingDetails = '/listing';
@@ -22,4 +23,8 @@ abstract final class RouteNames {
   static const notifications = '/notifications';
   static const support = '/support';
   static const settings = '/settings';
+
+  static String listingDetailsById(String id) => '$listingDetails/$id';
+
+  static String editListingById(String id) => '$editListing/$id';
 }

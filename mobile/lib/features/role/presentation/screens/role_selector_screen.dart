@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/theme/app_colors.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/enums/app_role.dart';
 import '../../../home/application/app_session_controller.dart';
@@ -13,7 +14,7 @@ class RoleSelectorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
@@ -22,7 +23,10 @@ class RoleSelectorScreen extends ConsumerWidget {
               alignment: Alignment.centerLeft,
               child: IconButton(
                 onPressed: () => context.go(RouteNames.auth),
-                icon: const Icon(Icons.arrow_back, color: Color(0xFF072A73)),
+                icon: const Icon(
+                  Icons.arrow_back,
+                  color: AppColors.primaryDeep,
+                ),
               ),
             ),
             const Text(
@@ -30,7 +34,7 @@ class RoleSelectorScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 46,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF072A73),
+                color: AppColors.primaryDeep,
               ),
             ).animate().fadeIn(duration: 220.ms).slideY(begin: 0.08, end: 0),
             const SizedBox(height: 28),
@@ -39,13 +43,13 @@ class RoleSelectorScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF1B2336),
+                color: AppColors.text,
               ),
             ).animate(delay: 60.ms).fadeIn(duration: 220.ms),
             const SizedBox(height: 10),
             const Text(
               'You can switch roles later in profile settings.',
-              style: TextStyle(fontSize: 16, color: Color(0xFF4E566A)),
+              style: TextStyle(fontSize: 16, color: AppColors.textMuted),
             ).animate(delay: 90.ms).fadeIn(duration: 220.ms),
             const SizedBox(height: 22),
             _RoleCard(
@@ -102,12 +106,19 @@ class _RoleCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFEEF2FA), Color(0xFFE4EBF8)],
+          colors: [AppColors.surface, AppColors.surfaceTint],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFCBD6EA)),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10E36A3A),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -122,10 +133,10 @@ class _RoleCard extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFCFD9EE),
+                    color: AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: const Color(0xFF1F2E52), size: 20),
+                  child: Icon(icon, color: AppColors.primaryDeep, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -137,7 +148,7 @@ class _RoleCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF172547),
+                          color: AppColors.text,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -145,7 +156,7 @@ class _RoleCard extends StatelessWidget {
                         subtitle,
                         style: const TextStyle(
                           fontSize: 15,
-                          color: Color(0xFF4F5D78),
+                          color: AppColors.textMuted,
                         ),
                       ),
                     ],
@@ -154,7 +165,7 @@ class _RoleCard extends StatelessWidget {
                 const Icon(
                   Icons.chevron_right,
                   size: 28,
-                  color: Color(0xFF22335A),
+                  color: AppColors.primaryDeep,
                 ),
               ],
             ),
