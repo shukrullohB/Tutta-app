@@ -8,6 +8,7 @@ import '../../bookings/application/booking_request_controller.dart';
 import '../../bookings/domain/models/booking.dart';
 import '../data/repositories/api_reviews_repository.dart';
 import '../data/repositories/fake_reviews_repository.dart';
+import '../domain/models/review.dart';
 import '../domain/repositories/reviews_repository.dart';
 
 final reviewsRepositoryProvider = Provider<ReviewsRepository>((ref) {
@@ -58,7 +59,11 @@ class ReviewSubmitController extends StateNotifier<AsyncValue<void>> {
       throw const AppException('Only guest can submit this review.');
     }
 
-    if (booking.status != BookingStatus.confirmed || !booking.isReviewAllowed) {
+    final statusAllowsReview =
+        booking.status == BookingStatus.confirmed ||
+        booking.status == BookingStatus.completed;
+
+    if (!statusAllowsReview || !booking.isReviewAllowed) {
       state = AsyncValue.error(
         const AppException('Review is allowed only after checkout date.'),
         StackTrace.current,
@@ -93,3 +98,10 @@ final reviewSubmitControllerProvider =
     StateNotifierProvider<ReviewSubmitController, AsyncValue<void>>((ref) {
       return ReviewSubmitController(ref);
     });
+
+final listingReviewsProvider = FutureProvider.family<List<Review>, String>((
+  ref,
+  listingId,
+) {
+  return ref.read(reviewsRepositoryProvider).getByListing(listingId);
+});

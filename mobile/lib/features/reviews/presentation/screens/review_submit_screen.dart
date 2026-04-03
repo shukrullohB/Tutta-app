@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/route_names.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../application/review_submit_controller.dart';
 
@@ -37,7 +38,16 @@ class _ReviewSubmitScreenState extends ConsumerState<ReviewSubmitScreen> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Review submitted. Thank you!')),
+        SnackBar(
+          content: Text(
+            _t(
+              context,
+              en: 'Review submitted. Thank you!',
+              ru: 'Отзыв отправлен. Спасибо!',
+              uz: 'Sharh yuborildi. Rahmat!',
+            ),
+          ),
+        ),
       );
       context.pop();
     } on AppException catch (error) {
@@ -45,9 +55,18 @@ class _ReviewSubmitScreenState extends ConsumerState<ReviewSubmitScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Could not submit review.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              context,
+              en: 'Could not submit review.',
+              ru: 'Не удалось отправить отзыв.',
+              uz: 'Sharhni yuborib bo\'lmadi.',
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -56,12 +75,32 @@ class _ReviewSubmitScreenState extends ConsumerState<ReviewSubmitScreen> {
     final loading = ref.watch(reviewSubmitControllerProvider).isLoading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Leave review')),
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.canPop()
+              ? context.pop()
+              : context.go(RouteNames.bookings),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(
+          _t(
+            context,
+            en: 'Leave review',
+            ru: 'Оставить отзыв',
+            uz: 'Sharh qoldirish',
+          ),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Rate your stay',
+            _t(
+              context,
+              en: 'Rate your stay',
+              ru: 'Оцените проживание',
+              uz: 'Yashashni baholang',
+            ),
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -85,18 +124,58 @@ class _ReviewSubmitScreenState extends ConsumerState<ReviewSubmitScreen> {
             controller: _commentController,
             enabled: !loading,
             maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'Comment',
-              hintText: 'How was cleanliness, communication, and comfort?',
+            decoration: InputDecoration(
+              labelText: _t(
+                context,
+                en: 'Comment',
+                ru: 'Комментарий',
+                uz: 'Izoh',
+              ),
+              hintText: _t(
+                context,
+                en: 'How was cleanliness, communication, and comfort?',
+                ru: 'Как прошли чистота, общение и комфорт?',
+                uz: 'Tozalik, muloqot va qulaylik qanday bo\'ldi?',
+              ),
             ),
           ),
           const SizedBox(height: 20),
           FilledButton(
             onPressed: loading ? null : _submit,
-            child: Text(loading ? 'Submitting...' : 'Submit review'),
+            child: Text(
+              loading
+                  ? _t(
+                      context,
+                      en: 'Submitting...',
+                      ru: 'Отправка...',
+                      uz: 'Yuborilmoqda...',
+                    )
+                  : _t(
+                      context,
+                      en: 'Submit review',
+                      ru: 'Отправить отзыв',
+                      uz: 'Sharh yuborish',
+                    ),
+            ),
           ),
         ],
       ),
     );
+  }
+}
+
+String _t(
+  BuildContext context, {
+  required String en,
+  required String ru,
+  required String uz,
+}) {
+  switch (Localizations.localeOf(context).languageCode) {
+    case 'ru':
+      return ru;
+    case 'uz':
+      return uz;
+    default:
+      return en;
   }
 }

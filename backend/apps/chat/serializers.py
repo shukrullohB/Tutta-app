@@ -19,6 +19,10 @@ class ThreadSerializer(serializers.ModelSerializer):
     host_id = serializers.IntegerField(source='host.id', read_only=True)
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
+    counterpart_name = serializers.SerializerMethodField()
+    counterpart_role = serializers.SerializerMethodField()
+    listing_title = serializers.CharField(source='listing.title', read_only=True)
+    listing_location = serializers.CharField(source='listing.location', read_only=True)
 
     class Meta:
         model = Thread
@@ -30,6 +34,10 @@ class ThreadSerializer(serializers.ModelSerializer):
             'last_message_at',
             'last_message',
             'unread_count',
+            'counterpart_name',
+            'counterpart_role',
+            'listing_title',
+            'listing_location',
             'created_at',
         )
         read_only_fields = ('id', 'guest_id', 'host_id', 'last_message_at', 'last_message', 'unread_count', 'created_at')
@@ -45,6 +53,21 @@ class ThreadSerializer(serializers.ModelSerializer):
     def get_unread_count(self, obj):
         user = self.context['request'].user
         return obj.messages.filter(is_read=False).exclude(sender=user).count()
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_counterpart_name(self, obj):
+        user = self.context['request'].user
+        counterpart = obj.host if obj.guest_id == user.id else obj.guest
+        if not counterpart:
+            return 'User'
+        full_name = f'{counterpart.first_name} {counterpart.last_name}'.strip()
+        return full_name or counterpart.email
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_counterpart_role(self, obj):
+        user = self.context['request'].user
+        counterpart = obj.host if obj.guest_id == user.id else obj.guest
+        return getattr(counterpart, 'role', 'user')
 
 
 class ThreadCreateSerializer(serializers.ModelSerializer):
@@ -91,6 +114,18 @@ class ThreadCreateSerializer(serializers.ModelSerializer):
 
 
 class MessageCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ('id', 'content', 'created_at')
+        read_only_fields = ('id', 'created_at')
+
+    def validate_content(self, value):
+        if not value.strip():
+            raise serializers.ValidationError('Message content cannot be empty.')
+        return value.strip()
+
+
+class MessageUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ('id', 'content', 'created_at')

@@ -7,6 +7,10 @@ class ChatThread {
     required this.createdAt,
     required this.lastMessage,
     required this.unreadCount,
+    required this.counterpartName,
+    required this.counterpartRole,
+    required this.listingTitle,
+    required this.listingLocation,
   });
 
   final String id;
@@ -16,4 +20,8 @@ class ChatThread {
   final DateTime createdAt;
   final String? lastMessage;
   final int unreadCount;
+  final String counterpartName;
+  final String counterpartRole;
+  final String listingTitle;
+  final String listingLocation;
 }

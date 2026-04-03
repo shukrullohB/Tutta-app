@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../app/router/route_names.dart';
 
 class PremiumPaywallScreen extends StatelessWidget {
   const PremiumPaywallScreen({super.key});
@@ -6,7 +9,15 @@ class PremiumPaywallScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tutta Premium')),
+      appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => context.canPop()
+              ? context.pop()
+              : context.go(RouteNames.home),
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: const Text('Tutta Premium'),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -32,7 +43,15 @@ class PremiumPaywallScreen extends StatelessWidget {
             ),
             const Spacer(),
             FilledButton(
-              onPressed: () {},
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Premium payment gateway is being connected. Use Click/Payme soon.',
+                    ),
+                  ),
+                );
+              },
               child: const Text('Continue to payment'),
             ),
           ],

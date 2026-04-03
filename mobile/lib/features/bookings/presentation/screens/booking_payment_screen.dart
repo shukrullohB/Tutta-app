@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/route_names.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../application/booking_request_controller.dart';
 import '../../domain/models/booking.dart';
@@ -104,7 +106,15 @@ class _BookingPaymentScreenState extends ConsumerState<BookingPaymentScreen> {
         final booking = snapshot.data;
         if (booking == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Booking payment')),
+            appBar: AppBar(
+              leading: IconButton(
+                onPressed: () => context.canPop()
+                    ? context.pop()
+                    : context.go(RouteNames.bookings),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              title: const Text('Booking payment'),
+            ),
             body: const Center(child: Text('Booking not found.')),
           );
         }
@@ -112,7 +122,15 @@ class _BookingPaymentScreenState extends ConsumerState<BookingPaymentScreen> {
         final payment = ref.watch(paymentControllerProvider);
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Booking payment')),
+          appBar: AppBar(
+            leading: IconButton(
+              onPressed: () => context.canPop()
+                  ? context.pop()
+                  : context.go(RouteNames.bookings),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            title: const Text('Booking payment'),
+          ),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [

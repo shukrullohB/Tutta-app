@@ -1,10 +1,7 @@
 import '../models/auth_user.dart';
 
 abstract interface class AuthRepository {
-  Future<AuthUser> login({
-    required String email,
-    required String password,
-  });
+  Future<AuthUser> login({required String email, required String password});
 
   Future<AuthUser> register({
     required String email,
@@ -17,11 +14,20 @@ abstract interface class AuthRepository {
 
   Future<AuthUser> me();
 
-  Future<Map<String, String>> refresh({
-    required String refreshToken,
+  Future<AuthUser> signInWithGoogle({
+    required String idToken,
+    String? accessToken,
+    String? email,
+    String? displayName,
   });
 
-  Future<void> signOut({
-    required String refreshToken,
+  Future<Map<String, String>> refresh({required String refreshToken});
+
+  Future<void> signOut({required String refreshToken});
+
+  Future<AuthUser> updateProfile({
+    required String firstName,
+    required String lastName,
+    String? phoneNumber,
   });
 }

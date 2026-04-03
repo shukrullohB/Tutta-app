@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.db import transaction
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers
@@ -64,29 +65,30 @@ class BookingConfirmView(views.APIView):
         },
     )
     def post(self, request, pk):
-        booking = generics.get_object_or_404(
-            Booking.objects.select_related('listing', 'listing__host'),
-            pk=pk,
-        )
+        with transaction.atomic():
+            booking = generics.get_object_or_404(
+                Booking.objects.select_for_update().select_related('listing', 'listing__host'),
+                pk=pk,
+            )
 
-        if booking.listing.host_id != request.user.id:
-            return response.Response({'detail': 'Only listing host can confirm this booking.'}, status=status.HTTP_403_FORBIDDEN)
+            if booking.listing.host_id != request.user.id:
+                return response.Response({'detail': 'Only listing host can confirm this booking.'}, status=status.HTTP_403_FORBIDDEN)
 
-        if booking.status != Booking.Status.PENDING:
-            return response.Response({'detail': 'Only pending bookings can be confirmed.'}, status=status.HTTP_400_BAD_REQUEST)
+            if booking.status != Booking.Status.PENDING:
+                return response.Response({'detail': 'Only pending bookings can be confirmed.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        conflict_exists = Booking.objects.filter(
-            listing=booking.listing,
-            status=Booking.Status.CONFIRMED,
-        ).exclude(pk=booking.pk).filter(
-            Q(start_date__lt=booking.end_date) & Q(end_date__gt=booking.start_date)
-        ).exists()
+            conflict_exists = Booking.objects.select_for_update().filter(
+                listing=booking.listing,
+                status=Booking.Status.CONFIRMED,
+            ).exclude(pk=booking.pk).filter(
+                Q(start_date__lt=booking.end_date) & Q(end_date__gt=booking.start_date)
+            ).exists()
 
-        if conflict_exists:
-            return response.Response({'detail': 'Booking dates conflict with another confirmed booking.'}, status=status.HTTP_400_BAD_REQUEST)
+            if conflict_exists:
+                return response.Response({'detail': 'Booking dates conflict with another confirmed booking.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        booking.status = Booking.Status.CONFIRMED
-        booking.save(update_fields=['status'])
+            booking.status = Booking.Status.CONFIRMED
+            booking.save(update_fields=['status'])
         return response.Response({'booking_id': booking.id, 'status': booking.status, 'detail': 'Booking confirmed.'}, status=status.HTTP_200_OK)
 
 
@@ -129,3 +131,43 @@ class BookingCancelView(views.APIView):
         booking.status = Booking.Status.CANCELLED
         booking.save(update_fields=['status'])
         return response.Response({'booking_id': booking.id, 'status': booking.status, 'detail': 'Booking cancelled.'}, status=status.HTTP_200_OK)
+
+
+class BookingCompleteView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = 'bookings_action'
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: inline_serializer(
+                name='BookingCompleteResponse',
+                fields={
+                    'booking_id': serializers.IntegerField(),
+                    'status': serializers.CharField(),
+                    'detail': serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, pk):
+        booking = generics.get_object_or_404(
+            Booking.objects.select_related('listing', 'listing__host', 'guest'),
+            pk=pk,
+        )
+
+        is_guest = booking.guest_id == request.user.id
+        is_host = booking.listing.host_id == request.user.id
+        if not (is_guest or is_host):
+            return response.Response({'detail': 'Only booking guest or listing host can complete.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if booking.status != Booking.Status.CONFIRMED:
+            return response.Response({'detail': 'Only confirmed bookings can be completed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if booking.end_date > date.today():
+            return response.Response({'detail': 'Booking can be completed only after stay end date.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking.status = Booking.Status.COMPLETED
+        booking.save(update_fields=['status'])
+        return response.Response({'booking_id': booking.id, 'status': booking.status, 'detail': 'Booking completed.'}, status=status.HTTP_200_OK)

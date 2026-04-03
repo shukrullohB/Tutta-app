@@ -10,6 +10,8 @@ class ApiClient {
 
   final Dio _dio;
 
+  String get baseUrl => _dio.options.baseUrl;
+
   Future<ApiResult<Map<String, dynamic>>> get(
     String path, {
     Map<String, dynamic>? queryParameters,
@@ -33,12 +35,81 @@ class ApiClient {
 
   Future<ApiResult<Map<String, dynamic>>> post(
     String path, {
-    Map<String, dynamic>? data,
+    Object? data,
     Map<String, dynamic>? queryParameters,
     Map<String, String>? headers,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: _optionsForBody(data: data, headers: headers),
+      );
+      return ApiSuccess(response.data ?? <String, dynamic>{});
+    } on DioException catch (error) {
+      return ApiFailure(_toFailure(error));
+    } catch (_) {
+      return const ApiFailure(
+        Failure(message: 'Unknown error occurred while sending data.'),
+      );
+    }
+  }
+
+  Future<ApiResult<Map<String, dynamic>>> put(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      final response = await _dio.put<Map<String, dynamic>>(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: _optionsForBody(data: data, headers: headers),
+      );
+      return ApiSuccess(response.data ?? <String, dynamic>{});
+    } on DioException catch (error) {
+      return ApiFailure(_toFailure(error));
+    } catch (_) {
+      return const ApiFailure(
+        Failure(message: 'Unknown error occurred while updating data.'),
+      );
+    }
+  }
+
+  Future<ApiResult<Map<String, dynamic>>> patch(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: _optionsForBody(data: data, headers: headers),
+      );
+      return ApiSuccess(response.data ?? <String, dynamic>{});
+    } on DioException catch (error) {
+      return ApiFailure(_toFailure(error));
+    } catch (_) {
+      return const ApiFailure(
+        Failure(message: 'Unknown error occurred while updating data.'),
+      );
+    }
+  }
+
+  Future<ApiResult<Map<String, dynamic>>> delete(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      final response = await _dio.delete<Map<String, dynamic>>(
         path,
         data: data,
         queryParameters: queryParameters,
@@ -49,7 +120,7 @@ class ApiClient {
       return ApiFailure(_toFailure(error));
     } catch (_) {
       return const ApiFailure(
-        Failure(message: 'Unknown error occurred while sending data.'),
+        Failure(message: 'Unknown error occurred while deleting data.'),
       );
     }
   }
@@ -86,6 +157,19 @@ class ApiClient {
       statusCode: error.response?.statusCode,
       code: error.type.name,
     );
+  }
+
+  Options _optionsForBody({
+    required Object? data,
+    Map<String, String>? headers,
+  }) {
+    if (data is FormData) {
+      return Options(
+        headers: headers,
+        contentType: 'multipart/form-data',
+      );
+    }
+    return Options(headers: headers);
   }
 }
 

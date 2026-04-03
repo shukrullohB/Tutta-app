@@ -27,7 +27,9 @@ class ApiAuthRepository implements AuthRepository {
         final payload = ApiResponseParser.extractMap(data);
         final user = payload['user'];
         if (user is! Map<String, dynamic>) {
-          throw const AppException('Invalid login response: missing user object.');
+          throw const AppException(
+            'Invalid login response: missing user object.',
+          );
         }
 
         return _mapUser(
@@ -58,7 +60,8 @@ class ApiAuthRepository implements AuthRepository {
         'first_name': firstName,
         'last_name': lastName,
         'role': role,
-        if (phoneNumber != null && phoneNumber.isNotEmpty) 'phone_number': phoneNumber,
+        if (phoneNumber != null && phoneNumber.isNotEmpty)
+          'phone_number': phoneNumber,
       },
     );
 
@@ -82,6 +85,45 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AuthUser> signInWithGoogle({
+    required String idToken,
+    String? accessToken,
+    String? email,
+    String? displayName,
+  }) async {
+    final result = await _apiClient.post(
+      ApiEndpoints.authGoogle,
+      data: <String, dynamic>{
+        'id_token': idToken,
+        if (accessToken != null && accessToken.isNotEmpty)
+          'access_token': accessToken,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (displayName != null && displayName.isNotEmpty)
+          'display_name': displayName,
+      },
+    );
+
+    return result.when(
+      success: (data) {
+        final payload = ApiResponseParser.extractMap(data);
+        final user = payload['user'];
+        if (user is! Map<String, dynamic>) {
+          throw const AppException(
+            'Invalid Google login response: missing user object.',
+          );
+        }
+
+        return _mapUser(
+          user,
+          accessToken: payload['access'] as String?,
+          refreshToken: payload['refresh'] as String?,
+        );
+      },
+      failure: _throwFailure,
+    );
+  }
+
+  @override
   Future<Map<String, String>> refresh({required String refreshToken}) async {
     final result = await _apiClient.post(
       ApiEndpoints.authRefresh,
@@ -95,13 +137,12 @@ class ApiAuthRepository implements AuthRepository {
         final refresh = (payload['refresh'] as String?) ?? refreshToken;
 
         if (access == null || access.isEmpty) {
-          throw const AppException('Invalid refresh response: missing access token.');
+          throw const AppException(
+            'Invalid refresh response: missing access token.',
+          );
         }
 
-        return <String, String>{
-          'access': access,
-          'refresh': refresh,
-        };
+        return <String, String>{'access': access, 'refresh': refresh};
       },
       failure: _throwFailure,
     );
@@ -114,6 +155,27 @@ class ApiAuthRepository implements AuthRepository {
       data: <String, dynamic>{'refresh': refreshToken},
     );
     result.when(success: (_) => null, failure: _throwFailure);
+  }
+
+  @override
+  Future<AuthUser> updateProfile({
+    required String firstName,
+    required String lastName,
+    String? phoneNumber,
+  }) async {
+    final result = await _apiClient.patch(
+      ApiEndpoints.usersMe,
+      data: <String, dynamic>{
+        'first_name': firstName,
+        'last_name': lastName,
+        'phone_number': phoneNumber,
+      },
+    );
+
+    return result.when(
+      success: (data) => _mapUser(ApiResponseParser.extractMap(data)),
+      failure: _throwFailure,
+    );
   }
 
   AuthUser _mapUser(

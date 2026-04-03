@@ -7,6 +7,7 @@ class Booking(models.Model):
         PENDING = 'pending', 'Pending'
         CONFIRMED = 'confirmed', 'Confirmed'
         CANCELLED = 'cancelled', 'Cancelled'
+        COMPLETED = 'completed', 'Completed'
 
     listing = models.ForeignKey('listings.Listing', on_delete=models.CASCADE, related_name='bookings')
     guest = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bookings')

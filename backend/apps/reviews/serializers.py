@@ -8,11 +8,27 @@ from .models import Review
 
 class ReviewSerializer(serializers.ModelSerializer):
     guest_id = serializers.IntegerField(source='guest.id', read_only=True)
+    guest_name = serializers.SerializerMethodField()
+    host_id = serializers.IntegerField(source='listing.host.id', read_only=True)
 
     class Meta:
         model = Review
-        fields = ('id', 'listing', 'booking', 'guest_id', 'rating', 'comment', 'created_at')
-        read_only_fields = ('id', 'guest_id', 'created_at')
+        fields = (
+            'id',
+            'listing',
+            'booking',
+            'guest_id',
+            'guest_name',
+            'host_id',
+            'rating',
+            'comment',
+            'created_at',
+        )
+        read_only_fields = ('id', 'guest_id', 'guest_name', 'host_id', 'created_at')
+
+    def get_guest_name(self, obj):
+        full_name = f'{obj.guest.first_name} {obj.guest.last_name}'.strip()
+        return full_name or obj.guest.email
 
     def validate_booking(self, booking: Booking):
         user = self.context['request'].user
@@ -20,8 +36,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         if booking.guest_id != user.id:
             raise serializers.ValidationError('You can only review your own bookings.')
 
-        if booking.status != Booking.Status.CONFIRMED:
-            raise serializers.ValidationError('Only confirmed bookings can be reviewed.')
+        if booking.status not in (Booking.Status.CONFIRMED, Booking.Status.COMPLETED):
+            raise serializers.ValidationError('Only confirmed or completed bookings can be reviewed.')
 
         if booking.end_date > date.today():
             raise serializers.ValidationError('You can review only after checkout date.')

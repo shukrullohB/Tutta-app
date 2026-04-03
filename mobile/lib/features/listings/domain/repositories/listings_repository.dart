@@ -1,3 +1,5 @@
+import '../models/create_listing_input.dart';
+import '../models/availability_day.dart';
 import '../models/listing.dart';
 import '../models/listing_search_params.dart';
 
@@ -8,4 +10,28 @@ abstract interface class ListingsRepository {
   });
 
   Future<Listing?> getById(String listingId);
+
+  Future<List<Listing>> getMine({bool includeInactive = false});
+
+  Future<List<Listing>> getByHost({
+    required String hostId,
+    required bool hasPremium,
+    bool includeInactive = false,
+  });
+
+  Future<Listing> createListing(CreateListingInput input);
+
+  Future<Listing> updateListing({
+    required String listingId,
+    required CreateListingInput input,
+  });
+
+  Future<void> deleteListing(String listingId);
+
+  Future<List<AvailabilityDay>> getAvailability(String listingId);
+
+  Future<List<AvailabilityDay>> upsertAvailability({
+    required String listingId,
+    required List<AvailabilityDay> days,
+  });
 }

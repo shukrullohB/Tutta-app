@@ -5,7 +5,7 @@ import 'auth_token_provider.dart';
 
 const _defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://127.0.0.1:8000/api',
+  defaultValue: 'https://api.tutta.uz/api',
 );
 
 final dioProvider = Provider<Dio>((ref) {
@@ -17,10 +17,7 @@ final dioProvider = Provider<Dio>((ref) {
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 20),
       sendTimeout: const Duration(seconds: 15),
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: const {'Accept': 'application/json'},
     ),
   );
 

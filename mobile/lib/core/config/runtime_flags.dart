@@ -3,12 +3,12 @@ class RuntimeFlags {
 
   static const bool useFakeAuth = bool.fromEnvironment(
     'USE_FAKE_AUTH',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   static const bool useFakeBookings = bool.fromEnvironment(
     'USE_FAKE_BOOKINGS',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   static const bool useFakePayments = bool.fromEnvironment(
@@ -18,11 +18,21 @@ class RuntimeFlags {
 
   static const bool useFakeReviews = bool.fromEnvironment(
     'USE_FAKE_REVIEWS',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   static const bool useFakeChat = bool.fromEnvironment(
     'USE_FAKE_CHAT',
+    defaultValue: false,
+  );
+
+  static const bool useFakeListings = bool.fromEnvironment(
+    'USE_FAKE_LISTINGS',
+    defaultValue: false,
+  );
+
+  static const bool useFakeNotifications = bool.fromEnvironment(
+    'USE_FAKE_NOTIFICATIONS',
     defaultValue: true,
   );
 }

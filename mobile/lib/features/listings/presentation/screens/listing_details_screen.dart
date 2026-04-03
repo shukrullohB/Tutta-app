@@ -3,109 +3,962 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
+import '../../../../app/theme/app_colors.dart';
+import '../../../../core/utils/google_maps_launcher.dart';
+import '../../../../core/widgets/app_error_view.dart';
 import '../../../auth/application/auth_controller.dart';
+import '../../../bookings/application/booking_request_controller.dart';
+import '../../../bookings/domain/models/booking.dart';
+import '../../../reviews/application/review_submit_controller.dart';
+import '../../../reviews/domain/models/review.dart';
+import '../../../wishlist/application/favorites_controller.dart';
 import '../../application/search_controller.dart';
 import '../../domain/models/listing.dart';
 
-class ListingDetailsScreen extends ConsumerWidget {
+enum _ReviewSort { newest, popular }
+
+class ListingDetailsScreen extends ConsumerStatefulWidget {
   const ListingDetailsScreen({super.key, required this.listingId});
 
   final String listingId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ListingDetailsScreen> createState() => _ListingDetailsScreenState();
+}
+
+class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
+  late final Future<Listing?> _future;
+  int _selectedImageIndex = 0;
+  _ReviewSort _reviewSort = _ReviewSort.newest;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = ref.read(listingsRepositoryProvider).getById(widget.listingId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<Listing?>(
-      future: ref.read(listingsRepositoryProvider).getById(listingId),
+      future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            appBar: AppBar(title: Text(_t(context, en: 'Stay', ru: '�����', uz: 'Turar joy'))),
+            body: const Center(child: CircularProgressIndicator()),
           );
         }
 
         final listing = snapshot.data;
         if (listing == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Listing')),
-            body: const Center(child: Text('Listing not found.')),
+            appBar: AppBar(
+              leading: IconButton(onPressed: _goBack, icon: const Icon(Icons.arrow_back_rounded)),
+              title: Text(_t(context, en: 'Stay', ru: '�����', uz: 'Turar joy')),
+            ),
+            body: AppErrorView(
+              message: _t(context, en: 'Apartment not found.', ru: '����� �� �������.', uz: 'Turar joy topilmadi.'),
+              onRetry: () => setState(() {}),
+            ),
           );
         }
 
-        final hasPremium =
-            ref.watch(authControllerProvider).valueOrNull?.user?.isPremium ??
-            false;
-
-        final freeStayLocked =
-            listing.type == ListingType.freeStay && !hasPremium;
+        final isFavorite = ref.watch(favoritesIdsProvider.select((ids) => ids.contains(listing.id)));
+        final currentUserId = ref.watch(authControllerProvider).valueOrNull?.user?.id;
+        final images = listing.imageUrls;
+        final selectedImage = images.isEmpty ? null : images[_selectedImageIndex.clamp(0, images.length - 1)];
 
         return Scaffold(
-          appBar: AppBar(title: Text(listing.title)),
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            leading: IconButton(onPressed: _goBack, icon: const Icon(Icons.arrow_back_rounded)),
+            title: Text(_t(context, en: 'Stay', ru: '�����', uz: 'Turar joy')),
+            actions: [
+              IconButton(
+                onPressed: () => ref.read(favoritesIdsProvider.notifier).toggle(listing.id),
+                icon: Icon(
+                  isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  color: isFavorite ? AppColors.danger : AppColors.text,
+                ),
+              ),
+            ],
+          ),
           body: ListView(
-            padding: const EdgeInsets.all(16),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 124),
             children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${listing.city}, ${listing.district}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(listing.description ?? 'No description yet.'),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          Chip(label: Text('Max guests: ${listing.maxGuests}')),
-                          Chip(label: Text('Min days: ${listing.minDays}')),
-                          Chip(label: Text('Max days: ${listing.maxDays}')),
-                          Chip(
-                            label: Text(
-                              listing.nightlyPriceUzs == null
-                                  ? 'Free stay'
-                                  : '${listing.nightlyPriceUzs} UZS / night',
+              if (selectedImage != null) ...[
+                RepaintBoundary(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: AspectRatio(
+                      aspectRatio: 1.55,
+                      child: _ListingImage(imagePath: selectedImage),
+                    ),
+                  ),
+                ),
+                if (images.length > 1) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 78,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: images.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 10),
+                      itemBuilder: (context, index) {
+                        final active = index == _selectedImageIndex;
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(18),
+                          onTap: () => setState(() => _selectedImageIndex = index),
+                          child: Container(
+                            width: 92,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: active ? AppColors.primary : AppColors.borderStrong,
+                                width: active ? 2 : 1,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(17),
+                              child: _ListingImage(imagePath: images[index]),
                             ),
                           ),
-                        ],
-                      ),
-                    ],
+                        );
+                      },
+                    ),
                   ),
+                ],
+              ],
+              const SizedBox(height: 18),
+              Text(
+                listing.title,
+                style: const TextStyle(color: AppColors.text, fontSize: 24, fontWeight: FontWeight.w800, height: 1.15),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.location_on_outlined, color: AppColors.textMuted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${listing.city}, ${listing.district}',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 18),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _SectionCard(
+                accent: AppColors.primary,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            (listing.description ?? '').trim().isEmpty
+                                ? _t(context, en: 'No description yet.', ru: '�������� ���� �� ���������.', uz: 'Tavsif hali qo\'shilmagan.')
+                                : listing.description!.trim(),
+                            style: const TextStyle(color: Color(0xFF2B3445), fontSize: 16, height: 1.5),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _PriceBadge(label: _priceLabel(context, listing)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _InfoChip(label: '${_t(context, en: 'Guests', ru: '�����', uz: 'Mehmonlar')} ${listing.maxGuests}'),
+                        _InfoChip(label: '${_t(context, en: 'Min days', ru: '���. ����', uz: 'Min. kun')} ${listing.minDays}'),
+                        _InfoChip(label: '${_t(context, en: 'Max days', ru: '����. ����', uz: 'Max. kun')} ${listing.maxDays}'),
+                        _InfoChip(label: _typeLabel(context, listing.type)),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
-              if (freeStayLocked)
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.workspace_premium_outlined),
-                    title: const Text('Premium required'),
-                    subtitle: const Text(
-                      'Free Stay bookings are available only for Premium users.',
-                    ),
-                    trailing: TextButton(
-                      onPressed: () => context.push(RouteNames.premiumPaywall),
-                      child: const Text('Upgrade'),
-                    ),
-                  ),
+              _SectionCard(
+                accent: AppColors.secondary,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_t(context, en: 'Amenities', ru: '��������', uz: 'Qulayliklar'), style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 22)),
+                    const SizedBox(height: 14),
+                    if (listing.amenities.isEmpty)
+                      Text(
+                        _t(context, en: 'Amenities are not available in this listing yet.', ru: '�������� ��� ����� ����� ���� �� �������.', uz: 'Qulayliklar hali ko\'rsatilmagan.'),
+                        style: const TextStyle(color: AppColors.textMuted),
+                      )
+                    else
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: listing.amenities.map((a) => _InfoChip(label: _amenityLabel(context, a))).toList(growable: false),
+                      ),
+                  ],
                 ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: freeStayLocked
-                    ? null
-                    : () {
-                        context.push(
-                          '${RouteNames.bookingRequest}/${listing.id}',
-                        );
-                      },
-                child: const Text('Request booking'),
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                accent: AppColors.gold,
+                child: _ReviewsSection(
+                  listingId: widget.listingId,
+                  sort: _reviewSort,
+                  currentUserId: currentUserId,
+                  onSortChanged: (value) => setState(() => _reviewSort = value),
+                  onDeleteReview: _deleteReview,
+                  onWriteReview: (reviews) => _openWriteReview(listing, reviews),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                accent: AppColors.primaryDeep,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_t(context, en: 'Host contact', ru: '�������� �������', uz: 'Host aloqasi'), style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 22)),
+                    const SizedBox(height: 12),
+                    Text(
+                      (listing.hostName ?? '').trim().isEmpty ? _t(context, en: 'Host', ru: '������', uz: 'Host') : listing.hostName!.trim(),
+                      style: const TextStyle(color: AppColors.text, fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      (listing.hostPhone ?? '').trim().isEmpty
+                          ? _t(context, en: 'Please message the host in chat first.', ru: '������� ��������� � �������� � ����.', uz: 'Avval hostga chatda yozing.')
+                          : '${_t(context, en: 'Phone', ru: '�������', uz: 'Telefon')}: ${listing.hostPhone!.trim()}',
+                      style: const TextStyle(color: AppColors.textMuted, height: 1.45),
+                    ),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: () => _openChat(listing),
+                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      label: Text(_t(context, en: 'Message', ru: '��������', uz: 'Yozish')),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _SectionCard(
+                accent: AppColors.secondary,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_t(context, en: 'Location', ru: '�������', uz: 'Joylashuv'), style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 22)),
+                    const SizedBox(height: 12),
+                    _DetailLine(label: _t(context, en: 'Address', ru: '�����', uz: 'Manzil'), value: '${listing.city}, ${listing.district}'),
+                    if ((listing.landmark ?? '').trim().isNotEmpty)
+                      _DetailLine(label: _t(context, en: 'Landmark', ru: '��������', uz: 'Mo\'ljal'), value: listing.landmark!.trim()),
+                    if ((listing.metro ?? '').trim().isNotEmpty)
+                      _DetailLine(label: _t(context, en: 'Metro', ru: '�����', uz: 'Metro'), value: listing.metro!.trim()),
+                    const SizedBox(height: 14),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(22),
+                      onTap: () => _openMap(listing),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primarySoft, AppColors.secondarySoft],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(
+                                  Icons.location_searching_rounded,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _t(context, en: 'Open in Google Maps', ru: '������� � Google Maps', uz: 'Google Mapsda ochish'),
+                                      style: const TextStyle(
+                                        color: AppColors.text,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _t(context, en: 'Tap to open the location pin.', ru: '�������, ����� ������� ����� �� �����.', uz: 'Xaritadagi nuqtani ochish uchun bosing.'),
+                                      style: const TextStyle(
+                                        color: AppColors.textMuted,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.open_in_new_rounded,
+                                color: AppColors.textMuted,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
+          ),
+          bottomNavigationBar: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openChat(listing),
+                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      label: Text(_t(context, en: 'Chat', ru: '���', uz: 'Chat')),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.icon(
+                      onPressed: () => context.push('${RouteNames.bookingRequest}/${listing.id}'),
+                      icon: const Icon(Icons.event_available_rounded),
+                      label: Text(_t(context, en: 'Request booking', ru: '��������� �����', uz: 'Bron so\'rovi')),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },
     );
   }
+
+  Future<void> _openWriteReview(Listing listing, List<Review> reviews) async {
+    final userId = ref.read(authControllerProvider).valueOrNull?.user?.id;
+    if (userId == null || userId.isEmpty) {
+      _showSnack(_t(context, en: 'Please sign in again.', ru: '����������, ������� �����.', uz: 'Iltimos, qayta kiring.'));
+      return;
+    }
+    if (reviews.any((review) => review.reviewerUserId == userId)) {
+      _showSnack(_t(context, en: 'You already added a review for this stay.', ru: '�� ��� �������� ����� ��� ����� �����.', uz: 'Siz bu turar joy uchun sharh qoldirgansiz.'));
+      return;
+    }
+    final bookings = await ref.read(bookingRepositoryProvider).getGuestBookings(userId);
+    if (!mounted) return;
+    Booking? eligible;
+    for (final booking in bookings) {
+      final canReview = booking.listingId == listing.id && booking.isReviewAllowed && (booking.status == BookingStatus.completed || booking.status == BookingStatus.confirmed);
+      if (canReview) {
+        eligible = booking;
+        break;
+      }
+    }
+    if (eligible == null) {
+      _showSnack(_t(context, en: 'You can leave a review after a completed stay.', ru: '�������� ����� ����� ����� ������������ ����������.', uz: 'Sharhni faqat yakunlangan turardan keyin qoldirish mumkin.'));
+      return;
+    }
+    await context.push('${RouteNames.reviewSubmit}/${eligible.id}');
+    if (!mounted) return;
+    ref.invalidate(listingReviewsProvider(widget.listingId));
+  }
+
+  Future<void> _deleteReview(String reviewId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_t(dialogContext, en: 'Delete review?', ru: '������� �����?', uz: 'Sharh o\'chirilsinmi?')),
+        content: Text(_t(dialogContext, en: 'This action cannot be undone.', ru: '��� �������� ������ ��������.', uz: 'Bu amalni ortga qaytarib bo\'lmaydi.')),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(_t(dialogContext, en: 'Cancel', ru: '������', uz: 'Bekor qilish'))),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(_t(dialogContext, en: 'Delete', ru: '�������', uz: 'O\'chirish'))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(reviewsRepositoryProvider).deleteReview(reviewId);
+    if (!mounted) return;
+    ref.invalidate(listingReviewsProvider(widget.listingId));
+    _showSnack(_t(context, en: 'Review deleted', ru: '����� �����', uz: 'Sharh o\'chirildi'));
+  }
+
+  Future<void> _openChat(Listing listing) async {
+    await context.push('${RouteNames.chatList}?listingId=${listing.id}&hostId=${listing.hostId}');
+  }
+
+  Future<void> _openMap(Listing listing) async {
+    final coordinates = _extractCoordinates(listing);
+    final opened = await openGoogleMaps(
+      query: <String>[
+        listing.title,
+        listing.city,
+        listing.district,
+        listing.landmark ?? '',
+        listing.metro ?? '',
+      ].where((item) => item.trim().isNotEmpty).join(', '),
+      latitude: coordinates?.$1,
+      longitude: coordinates?.$2,
+    );
+    if (!opened && mounted) {
+      _showSnack(_t(context, en: 'Could not open Google Maps.', ru: '�� ������� ������� Google Maps.', uz: 'Google Mapsni ochib bo\'lmadi.'));
+    }
+  }
+
+  (double, double)? _extractCoordinates(Listing listing) {
+    final text = (listing.landmark ?? '').trim();
+    final match = RegExp(r'^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$')
+        .firstMatch(text);
+    if (match == null) {
+      return null;
+    }
+    final lat = double.tryParse(match.group(1) ?? '');
+    final lng = double.tryParse(match.group(2) ?? '');
+    if (lat == null || lng == null) {
+      return null;
+    }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return null;
+    }
+    return (lat, lng);
+  }
+
+  void _goBack() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go(RouteNames.home);
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 }
+class _ReviewsSection extends ConsumerWidget {
+  const _ReviewsSection({
+    required this.listingId,
+    required this.sort,
+    required this.currentUserId,
+    required this.onSortChanged,
+    required this.onDeleteReview,
+    required this.onWriteReview,
+  });
+
+  final String listingId;
+  final _ReviewSort sort;
+  final String? currentUserId;
+  final ValueChanged<_ReviewSort> onSortChanged;
+  final Future<void> Function(String reviewId) onDeleteReview;
+  final Future<void> Function(List<Review> reviews) onWriteReview;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reviewsAsync = ref.watch(listingReviewsProvider(listingId));
+    return reviewsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 18),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, _) => Text(
+        _t(context, en: 'Could not load reviews.', ru: '�� ������� ��������� ������.', uz: 'Sharhlarni yuklab bo\'lmadi.'),
+        style: const TextStyle(color: AppColors.textMuted),
+      ),
+      data: (reviews) {
+        final sorted = _sortReviews(reviews, sort);
+        final average = reviews.isEmpty ? 0.0 : reviews.map((review) => review.rating).reduce((a, b) => a + b) / reviews.length;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (reviews.isEmpty)
+              Text(
+                _t(
+                  context,
+                  en: 'No guest reviews yet',
+                  ru: '������� ������ ���� ���',
+                  uz: 'Hozircha sharh yo\'q',
+                ),
+                style: const TextStyle(color: AppColors.textMuted),
+              )
+            else
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondarySoft,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.borderStrong),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 18,
+                          color: AppColors.gold,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _ratingText(average),
+                          style: const TextStyle(
+                            color: AppColors.primaryDeep,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${reviews.length} ${_t(context, en: 'reviews', ru: '�������', uz: 'sharh')}',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                ChoiceChip(
+                  label: Text(_t(context, en: 'Newest', ru: '�����', uz: 'Yangi')),
+                  selected: sort == _ReviewSort.newest,
+                  onSelected: (_) => onSortChanged(_ReviewSort.newest),
+                ),
+                ChoiceChip(
+                  label: Text(_t(context, en: 'Popular', ru: '����������', uz: 'Mashhur')),
+                  selected: sort == _ReviewSort.popular,
+                  onSelected: (_) => onSortChanged(_ReviewSort.popular),
+                ),
+                FilledButton.tonal(
+                  onPressed: () => onWriteReview(reviews),
+                  child: Text(_t(context, en: 'Write review', ru: '�������� �����', uz: 'Sharh yozish')),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (reviews.isEmpty)
+              Text(
+                _t(context, en: 'This apartment does not have public reviews yet.', ru: '� ����� ����� ���� ��� ��������� �������.', uz: 'Bu turar joyda hozircha ommaviy sharh yo\'q.'),
+                style: const TextStyle(color: AppColors.textMuted, height: 1.45),
+              )
+            else ...[
+              ...sorted.take(2).map(
+                (review) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ReviewTile(
+                    review: review,
+                    isOwn: review.reviewerUserId == currentUserId,
+                    onDeleteReview: onDeleteReview,
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _showAllReviews(context, sorted),
+                  icon: const Icon(Icons.reviews_outlined),
+                  label: Text(_t(context, en: 'See all reviews', ru: '��� ������', uz: 'Barcha sharhlar')),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAllReviews(BuildContext context, List<Review> reviews) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceSoft,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          child: Column(
+            children: [
+              Text(_t(context, en: 'All reviews', ru: '��� ������', uz: 'Barcha sharhlar'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: reviews.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (_, index) => _ReviewTile(
+                    review: reviews[index],
+                    isOwn: reviews[index].reviewerUserId == currentUserId,
+                    onDeleteReview: onDeleteReview,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReviewTile extends StatelessWidget {
+  const _ReviewTile({required this.review, required this.isOwn, required this.onDeleteReview});
+
+  final Review review;
+  final bool isOwn;
+  final Future<void> Function(String reviewId) onDeleteReview;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    (review.reviewerName ?? '').trim().isEmpty ? _t(context, en: 'Guest', ru: '�����', uz: 'Mehmon') : review.reviewerName!.trim(),
+                    style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 17),
+                  ),
+                ),
+                _StarsRow(rating: review.rating),
+                if (isOwn) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => onDeleteReview(review.id),
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    tooltip: _t(context, en: 'Delete', ru: '�������', uz: 'O\'chirish'),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              review.comment.trim().isEmpty ? _t(context, en: 'No written comment.', ru: '����� ������ �� ��������.', uz: 'Sharh matni qo\'shilmagan.') : review.comment.trim(),
+              style: const TextStyle(color: AppColors.textSoft, height: 1.45),
+            ),
+            const SizedBox(height: 6),
+            Text(_dateLabel(review.createdAt), style: const TextStyle(color: AppColors.iconMuted, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StarsRow extends StatelessWidget {
+  const _StarsRow({required this.rating});
+
+  final int rating;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List<Widget>.generate(5, (index) {
+        final filled = index < rating;
+        return Padding(
+          padding: const EdgeInsets.only(left: 2),
+          child: Icon(filled ? Icons.star_rounded : Icons.star_border_rounded, size: 18, color: AppColors.gold),
+        );
+      }),
+    );
+  }
+}
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.child, this.accent});
+
+  final Widget child;
+  final Color? accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceSoft,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120A1633),
+            blurRadius: 22,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          if (accent != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 5,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceTint,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Text(label, style: const TextStyle(color: AppColors.textSoft)),
+      ),
+    );
+  }
+}
+
+class _PriceBadge extends StatelessWidget {
+  const _PriceBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.secondarySoft, AppColors.primarySoftStrong],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.borderStrong),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22F2A120),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Text(label, style: const TextStyle(color: AppColors.primaryDeep, fontSize: 16, fontWeight: FontWeight.w800)),
+      ),
+    );
+  }
+}
+
+class _DetailLine extends StatelessWidget {
+  const _DetailLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(color: AppColors.textSoft, fontSize: 15, height: 1.4),
+          children: [
+            TextSpan(text: '$label: ', style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w700)),
+            TextSpan(text: value),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ListingImage extends StatelessWidget {
+  const _ListingImage({required this.imagePath});
+
+  final String imagePath;
+
+  @override
+  Widget build(BuildContext context) {
+    if (imagePath.startsWith('assets/')) {
+      return Image.asset(imagePath, fit: BoxFit.cover, filterQuality: FilterQuality.low);
+    }
+    return Image.network(
+      imagePath,
+      fit: BoxFit.cover,
+      filterQuality: FilterQuality.low,
+      loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()),
+      errorBuilder: (_, _, _) => Container(
+        color: AppColors.surfaceTint,
+        alignment: Alignment.center,
+        child: const Icon(Icons.image_not_supported_outlined, size: 36, color: AppColors.iconMuted),
+      ),
+    );
+  }
+}
+
+List<Review> _sortReviews(List<Review> reviews, _ReviewSort sort) {
+  final items = List<Review>.from(reviews);
+  if (sort == _ReviewSort.popular) {
+    items.sort((a, b) {
+      final byRating = b.rating.compareTo(a.rating);
+      if (byRating != 0) {
+        return byRating;
+      }
+      return b.createdAt.compareTo(a.createdAt);
+    });
+  } else {
+    items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+  return items;
+}
+
+String _priceLabel(BuildContext context, Listing listing) {
+  if (listing.type == ListingType.freeStay) {
+    return _t(context, en: 'Free stay', ru: '���������', uz: 'Bepul');
+  }
+  final price = listing.nightlyPriceUzs;
+  if (price == null || price <= 0) {
+    return _t(context, en: 'Price on request', ru: '���� �� �������', uz: 'Narx so\'rov bo\'yicha');
+  }
+  return '${_formatUzs(price)} UZS';
+}
+
+String _typeLabel(BuildContext context, ListingType type) {
+  switch (type) {
+    case ListingType.room:
+      return _t(context, en: 'Room', ru: '�������', uz: 'Xona');
+    case ListingType.homePart:
+      return _t(context, en: 'Home part', ru: '����� ����', uz: 'Uyning bir qismi');
+    case ListingType.freeStay:
+      return _t(context, en: 'Free stay', ru: '���������� ����������', uz: 'Bepul turar joy');
+    case ListingType.apartment:
+      return _t(context, en: 'Apartment', ru: '��������', uz: 'Kvartira');
+  }
+}
+
+String _amenityLabel(BuildContext context, ListingAmenity amenity) {
+  switch (amenity) {
+    case ListingAmenity.wifi:
+      return 'Wi-Fi';
+    case ListingAmenity.airConditioner:
+      return _t(context, en: 'Air conditioner', ru: '�����������', uz: 'Konditsioner');
+    case ListingAmenity.kitchen:
+      return _t(context, en: 'Kitchen', ru: '�����', uz: 'Oshxona');
+    case ListingAmenity.washingMachine:
+      return _t(context, en: 'Washing machine', ru: '���������� ������', uz: 'Kir yuvish mashinasi');
+    case ListingAmenity.parking:
+      return _t(context, en: 'Parking', ru: '��������', uz: 'Avtoturargoh');
+    case ListingAmenity.privateBathroom:
+      return _t(context, en: 'Private bathroom', ru: '��������� ������', uz: 'Shaxsiy hammom');
+    case ListingAmenity.kidsAllowed:
+      return _t(context, en: 'Children allowed', ru: '����� � ������', uz: 'Bolalar mumkin');
+    case ListingAmenity.petsAllowed:
+      return _t(context, en: 'Pets allowed', ru: '����� � ���������', uz: 'Uy hayvonlari mumkin');
+    case ListingAmenity.womenOnly:
+      return _t(context, en: 'Women only', ru: '������ ��� ������', uz: 'Faqat ayollar uchun');
+    case ListingAmenity.menOnly:
+      return _t(context, en: 'Men only', ru: '������ ��� ������', uz: 'Faqat erkaklar uchun');
+    case ListingAmenity.hostLivesTogether:
+      return _t(context, en: 'Host lives together', ru: '������ ���� ������', uz: 'Host birga yashaydi');
+    case ListingAmenity.instantConfirm:
+      return _t(context, en: 'Instant confirm', ru: '���������� �������������', uz: 'Darhol tasdiq');
+  }
+}
+
+String _formatUzs(int value) {
+  final raw = value.toString();
+  final out = StringBuffer();
+  for (var i = 0; i < raw.length; i++) {
+    out.write(raw[i]);
+    final remain = raw.length - i - 1;
+    if (remain > 0 && remain % 3 == 0) {
+      out.write(' ');
+    }
+  }
+  return out.toString();
+}
+
+String _ratingText(double rating) {
+  final text = rating.toStringAsFixed(rating.truncateToDouble() == rating ? 0 : 1);
+  return '$text / 5';
+}
+
+String _dateLabel(DateTime date) {
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  return '$day.$month.${date.year}';
+}
+
+String _t(BuildContext context, {required String en, required String ru, required String uz}) {
+  switch (Localizations.localeOf(context).languageCode) {
+    case 'ru':
+      return ru;
+    case 'uz':
+      return uz;
+    default:
+      return en;
+  }
+}
+

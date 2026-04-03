@@ -7,7 +7,7 @@ import 'package:tutta/app/app.dart';
 void main() {
   testWidgets('App boots with splash', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: TuttaApp()));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 1600));
 
     expect(find.byType(MaterialApp), findsOneWidget);
   });

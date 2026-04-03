@@ -26,3 +26,13 @@ class ReviewListCreateView(generics.ListCreateAPIView):
         if listing_id:
             queryset = queryset.filter(listing_id=listing_id)
         return queryset
+
+
+class ReviewDetailView(generics.DestroyAPIView):
+    queryset = Review.objects.select_related('listing', 'guest', 'booking')
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = 'reviews_write'
+
+    def get_queryset(self):
+        return self.queryset.filter(guest=self.request.user)

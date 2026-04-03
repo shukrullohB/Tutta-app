@@ -3,9 +3,11 @@ from rest_framework import serializers
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from .models import User
 from .serializers import (
     GoogleLoginSerializer,
     LogoutSerializer,
+    PublicUserProfileSerializer,
     RegisterSerializer,
     TuttaTokenObtainPairSerializer,
     UserSerializer,
@@ -85,7 +87,7 @@ class GoogleLoginView(views.APIView):
         )
 
 
-class MeView(generics.RetrieveAPIView):
+class MeView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [throttling.ScopedRateThrottle]
@@ -93,3 +95,11 @@ class MeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class PublicProfileView(generics.RetrieveAPIView):
+    serializer_class = PublicUserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = 'users_me'
+    queryset = User.objects.all()

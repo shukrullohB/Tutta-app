@@ -1,11 +1,17 @@
 abstract final class RouteNames {
-  static const splash = '/';
+  static const splash = '/splash';
   static const onboarding = '/onboarding';
   static const auth = '/auth';
+  static const authVerify = '/auth/verify';
   static const roleSelector = '/role-selector';
   static const home = '/home';
+  static const homeListings = '/home/listings';
   static const search = '/search';
+  static const searchMap = '/search/map';
   static const listingDetails = '/listing';
+  static const createListing = '/host/listings/new';
+  static const editListing = '/host/listings/edit';
+  static const listingAvailability = '/host/listings/availability';
   static const bookingRequest = '/booking-request';
   static const bookingPayment = '/booking-payment';
   static const reviewSubmit = '/review-submit';
@@ -14,6 +20,11 @@ abstract final class RouteNames {
   static const hostRequests = '/host-requests';
   static const chatList = '/chat';
   static const premiumPaywall = '/premium';
+  static const notifications = '/notifications';
   static const support = '/support';
   static const settings = '/settings';
+
+  static String listingDetailsById(String id) => '$listingDetails/$id';
+
+  static String editListingById(String id) => '$editListing/$id';
 }

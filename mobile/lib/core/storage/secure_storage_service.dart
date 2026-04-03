@@ -29,6 +29,21 @@ class SecureStorageService {
     await _storage.delete(key: _accessTokenKey);
     await _storage.delete(key: _refreshTokenKey);
   }
+
+  Future<void> writeString({
+    required String key,
+    required String value,
+  }) async {
+    await _storage.write(key: key, value: value);
+  }
+
+  Future<String?> readString(String key) {
+    return _storage.read(key: key);
+  }
+
+  Future<void> delete(String key) async {
+    await _storage.delete(key: key);
+  }
 }
 
 final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {

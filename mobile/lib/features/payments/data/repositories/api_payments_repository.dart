@@ -57,6 +57,10 @@ class ApiPaymentsRepository implements PaymentsRepository {
       'PAYMENT_WEBHOOK_SECRET',
       defaultValue: '',
     );
+    final idempotencyKey =
+        '${event.externalTransactionId}-${event.status.name}-${event.method.name}';
+    final signature =
+        'dev-signature:${event.method.name}:${event.externalTransactionId}:${event.status.name}';
 
     final result = await _apiClient.post(
       ApiEndpoints.paymentWebhook(event.method.name),
@@ -66,6 +70,8 @@ class ApiPaymentsRepository implements PaymentsRepository {
         'payload': <String, dynamic>{},
       },
       headers: <String, String>{
+        'x-idempotency-key': idempotencyKey,
+        'x-tutta-signature': signature,
         if (webhookSecret.isNotEmpty) 'X-Webhook-Secret': webhookSecret,
       },
     );
@@ -73,7 +79,7 @@ class ApiPaymentsRepository implements PaymentsRepository {
     return result.when(
       success: (data) {
         final payload = ApiResponseParser.extractMap(data);
-        final rawStatus = payload['status'];
+        final rawStatus = payload['status'] ?? (payload['payload'] as Map?)?['status'];
         return _statusFromServer(rawStatus);
       },
       failure: _throwFailure,

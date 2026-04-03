@@ -25,6 +25,8 @@ class Listing with _$Listing {
   const factory Listing({
     required String id,
     required String hostId,
+    String? hostName,
+    String? hostPhone,
     required String title,
     required String city,
     required String district,

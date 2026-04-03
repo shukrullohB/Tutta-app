@@ -10,6 +10,7 @@ class Review with _$Review {
     required String bookingId,
     required String listingId,
     required String reviewerUserId,
+    String? reviewerName,
     required String hostUserId,
     required int rating,
     required String comment,

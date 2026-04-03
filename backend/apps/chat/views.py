@@ -3,7 +3,13 @@ from django.utils import timezone
 from rest_framework import generics, permissions, throttling
 
 from .models import Message, Thread
-from .serializers import MessageCreateSerializer, MessageSerializer, ThreadCreateSerializer, ThreadSerializer
+from .serializers import (
+    MessageCreateSerializer,
+    MessageSerializer,
+    MessageUpdateSerializer,
+    ThreadCreateSerializer,
+    ThreadSerializer,
+)
 
 
 class ThreadListCreateView(generics.ListCreateAPIView):
@@ -58,3 +64,31 @@ class MessageListCreateView(generics.ListCreateAPIView):
         queryset = self.get_queryset()
         queryset.exclude(sender=request.user).update(is_read=True)
         return super().list(request, *args, **kwargs)
+
+
+class ThreadDetailView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = 'chat_threads'
+
+    def get_queryset(self):
+        return Thread.objects.filter(Q(guest=self.request.user) | Q(host=self.request.user))
+
+
+class MessageDetailView(generics.UpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [throttling.ScopedRateThrottle]
+    throttle_scope = 'chat_messages'
+
+    def get_queryset(self):
+        queryset = Message.objects.filter(
+            Q(thread__guest=self.request.user) | Q(thread__host=self.request.user)
+        ).filter(thread_id=self.kwargs['thread_id'])
+        if self.request.method in ('PUT', 'PATCH'):
+            queryset = queryset.filter(sender=self.request.user)
+        return queryset
+
+    def get_serializer_class(self):
+        if self.request.method in ('PUT', 'PATCH'):
+            return MessageUpdateSerializer
+        return MessageSerializer
