@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/app.dart';
 import '../../../../app/router/route_names.dart';
-import '../../../../app/theme/app_colors.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../application/auth_controller.dart';
@@ -187,7 +186,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         authState.whenOrNull(error: (error, _) => _mapError(error));
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF4F5F7),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(28, 18, 28, 30),
@@ -201,7 +200,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   const Text(
                     'Tutta',
                     style: TextStyle(
-                      color: AppColors.primaryDeep,
+                      color: Color(0xFF072A73),
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
                     ),
@@ -218,7 +217,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       TextSpan(
                         text: '${loc.authWelcome}\n',
                         style: const TextStyle(
-                          color: AppColors.primaryDeep,
+                          color: Color(0xFF072A73),
                           fontSize: 42,
                           fontWeight: FontWeight.w700,
                           height: 0.98,
@@ -227,7 +226,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       TextSpan(
                         text: loc.authBack,
                         style: const TextStyle(
-                          color: AppColors.secondary,
+                          color: Color(0xFF7FA0F3),
                           fontSize: 42,
                           fontWeight: FontWeight.w700,
                           height: 0.98,
@@ -240,7 +239,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 Text(
                   loc.authSubtitle,
                   style: const TextStyle(
-                    color: AppColors.textSoft,
+                    color: Color(0xFF3D4350),
                     fontSize: 17,
                     height: 1.35,
                   ),
@@ -250,7 +249,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   child: Text(
                     loc.authCreateAccount,
                     style: const TextStyle(
-                      color: AppColors.primaryDeep,
+                      color: Color(0xFF072A73),
                       fontSize: 26,
                       fontWeight: FontWeight.w700,
                     ),
@@ -262,7 +261,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     TextSpan(
                       text: '${loc.authAlreadyMember} ',
                       style: const TextStyle(
-                        color: AppColors.textSoft,
+                        color: Color(0xFF3D4350),
                         fontSize: 17,
                       ),
                       children: [
@@ -273,7 +272,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             child: Text(
                               loc.authSignInAction,
                               style: const TextStyle(
-                                color: AppColors.primaryDeep,
+                                color: Color(0xFF072A73),
                                 fontSize: 17,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -297,11 +296,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
                     color: const Color(0xFFFDEBEC),
-                    border: Border.all(color: const Color(0xFFF0C0B8)),
+                    border: Border.all(color: const Color(0xFFE2A8AA)),
                   ),
                   child: Text(
                     shownError,
-                    style: const TextStyle(color: AppColors.danger),
+                    style: const TextStyle(color: Color(0xFF8D2A2E)),
                   ),
                 ).animate().fadeIn(duration: 180.ms),
               Row(
@@ -355,7 +354,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     Text(
                       loc.authForgotPassword.toUpperCase(),
                       style: const TextStyle(
-                        color: AppColors.gold,
+                        color: Color(0xFF6A480A),
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1.1,
                       ),
@@ -380,7 +379,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     Checkbox(
                       value: _agreed,
                       onChanged: (v) => setState(() => _agreed = v ?? false),
-                      side: const BorderSide(color: AppColors.borderStrong),
+                      side: const BorderSide(color: Color(0xFFB9BECC)),
                     ),
                     Expanded(
                       child: Padding(
@@ -388,7 +387,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         child: Text(
                           loc.authTermsAgree,
                           style: const TextStyle(
-                            color: AppColors.text,
+                            color: Color(0xFF232A3A),
                             fontSize: 16,
                             height: 1.3,
                           ),
@@ -408,7 +407,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         iconAlignment: IconAlignment.end,
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(58),
-                          backgroundColor: AppColors.primaryDeep,
+                          backgroundColor: const Color(0xFF072A73),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(999),
                           ),
@@ -436,7 +435,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         onPressed: isLoading ? null : _signInWithEmail,
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(58),
-                          backgroundColor: AppColors.primaryDeep,
+                          backgroundColor: const Color(0xFF072A73),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(999),
                           ),
@@ -476,12 +475,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           },
                     icon: const Icon(
                       Icons.smartphone,
-                      color: AppColors.textSoft,
+                      color: Color(0xFF576680),
                     ),
                     label: Text(
                       loc.authContinueWithPhone,
                       style: const TextStyle(
-                        color: AppColors.textSoft,
+                        color: Color(0xFF576680),
                         fontSize: 18,
                       ),
                     ),
@@ -494,7 +493,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     TextSpan(
                       text: '${loc.authNewToTutta} ',
                       style: const TextStyle(
-                        color: AppColors.textSoft,
+                        color: Color(0xFF3D4350),
                         fontSize: 17,
                       ),
                       children: [
@@ -505,7 +504,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                             child: Text(
                               loc.authRegister,
                               style: const TextStyle(
-                                color: AppColors.primaryDeep,
+                                color: Color(0xFF072A73),
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -571,7 +570,7 @@ class _FieldLabel extends StatelessWidget {
       child: Text(
         text,
         style: const TextStyle(
-          color: AppColors.textMuted,
+          color: Color(0xFF6B7080),
           letterSpacing: 2,
           fontWeight: FontWeight.w700,
           fontSize: 14,
@@ -603,16 +602,9 @@ class _LightField extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.borderStrong),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x10E36A3A),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
+        color: const Color(0xFFF0F1F4),
+        border: Border.all(color: const Color(0xFFCDD1D9)),
+        borderRadius: BorderRadius.circular(2),
       ),
       child: TextField(
         controller: controller,
@@ -620,7 +612,7 @@ class _LightField extends StatelessWidget {
         obscureText: obscureText,
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(color: AppColors.iconMuted, fontSize: 18),
+          hintStyle: const TextStyle(color: Color(0xFFA8AEB8), fontSize: 18),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
@@ -630,7 +622,7 @@ class _LightField extends StatelessWidget {
               ? null
               : IconButton(
                   onPressed: onSuffixTap,
-                  icon: Icon(suffixIcon, color: const Color(0xFFA08A81)),
+                  icon: Icon(suffixIcon, color: const Color(0xFFA1A6B0)),
                 ),
         ),
       ),
@@ -647,20 +639,20 @@ class _DividerText extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(child: Divider(color: AppColors.border)),
+        const Expanded(child: Divider(color: Color(0xFFD9DDE5))),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text(
             label,
             style: const TextStyle(
-              color: AppColors.textMuted,
+              color: Color(0xFF7C8290),
               fontWeight: FontWeight.w700,
               letterSpacing: 2,
               fontSize: 12,
             ),
           ),
         ),
-        const Expanded(child: Divider(color: AppColors.border)),
+        const Expanded(child: Divider(color: Color(0xFFD9DDE5))),
       ],
     );
   }
@@ -683,8 +675,8 @@ class _SocialButton extends StatelessWidget {
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(56),
-        side: const BorderSide(color: AppColors.borderStrong),
-        backgroundColor: AppColors.surface,
+        side: const BorderSide(color: Color(0xFFBFC6D3)),
+        backgroundColor: const Color(0xFFFBFCFE),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
       child: Row(
@@ -694,7 +686,7 @@ class _SocialButton extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: AppColors.text,
+              color: Color(0xFF1B202A),
               fontSize: 17,
               fontWeight: FontWeight.w600,
             ),
@@ -716,10 +708,10 @@ class _GoogleBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE2E8F2)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x10E36A3A),
+            color: Color(0x140F172A),
             blurRadius: 6,
             offset: Offset(0, 2),
           ),

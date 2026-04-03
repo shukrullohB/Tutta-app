@@ -44,7 +44,7 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return Scaffold(
-            appBar: AppBar(title: Text(_t(context, en: 'Stay', ru: 'пїЅпїЅпїЅпїЅпїЅ', uz: 'Turar joy'))),
+            appBar: AppBar(title: Text(_t(context, en: 'Stay', ru: 'Жильё', uz: 'Turar joy'))),
             body: const Center(child: CircularProgressIndicator()),
           );
         }
@@ -54,10 +54,10 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
           return Scaffold(
             appBar: AppBar(
               leading: IconButton(onPressed: _goBack, icon: const Icon(Icons.arrow_back_rounded)),
-              title: Text(_t(context, en: 'Stay', ru: 'пїЅпїЅпїЅпїЅпїЅ', uz: 'Turar joy')),
+              title: Text(_t(context, en: 'Stay', ru: 'Жильё', uz: 'Turar joy')),
             ),
             body: AppErrorView(
-              message: _t(context, en: 'Apartment not found.', ru: 'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', uz: 'Turar joy topilmadi.'),
+              message: _t(context, en: 'Apartment not found.', ru: 'Жильё не найдено.', uz: 'Turar joy topilmadi.'),
               onRetry: () => setState(() {}),
             ),
           );
@@ -72,7 +72,7 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
           backgroundColor: AppColors.background,
           appBar: AppBar(
             leading: IconButton(onPressed: _goBack, icon: const Icon(Icons.arrow_back_rounded)),
-            title: Text(_t(context, en: 'Stay', ru: 'пїЅпїЅпїЅпїЅпїЅ', uz: 'Turar joy')),
+            title: Text(_t(context, en: 'Stay', ru: 'Жильё', uz: 'Turar joy')),
             actions: [
               IconButton(
                 onPressed: () => ref.read(favoritesIdsProvider.notifier).toggle(listing.id),
@@ -160,7 +160,7 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
                         Expanded(
                           child: Text(
                             (listing.description ?? '').trim().isEmpty
-                                ? _t(context, en: 'No description yet.', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', uz: 'Tavsif hali qo\'shilmagan.')
+                                ? _t(context, en: 'No description yet.', ru: 'Описание пока не добавлено.', uz: 'Tavsif hali qo\'shilmagan.')
                                 : listing.description!.trim(),
                             style: const TextStyle(color: Color(0xFF2B3445), fontSize: 16, height: 1.5),
                           ),
@@ -174,9 +174,9 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
                       spacing: 10,
                       runSpacing: 10,
                       children: [
-                        _InfoChip(label: '${_t(context, en: 'Guests', ru: 'пїЅпїЅпїЅпїЅпїЅ', uz: 'Mehmonlar')} ${listing.maxGuests}'),
-                        _InfoChip(label: '${_t(context, en: 'Min days', ru: 'пїЅпїЅпїЅ. пїЅпїЅпїЅпїЅ', uz: 'Min. kun')} ${listing.minDays}'),
-                        _InfoChip(label: '${_t(context, en: 'Max days', ru: 'пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅ', uz: 'Max. kun')} ${listing.maxDays}'),
+                        _InfoChip(label: '${_t(context, en: 'Guests', ru: 'Гости', uz: 'Mehmonlar')} ${listing.maxGuests}'),
+                        _InfoChip(label: '${_t(context, en: 'Min days', ru: 'Мин. дней', uz: 'Min. kun')} ${listing.minDays}'),
+                        _InfoChip(label: '${_t(context, en: 'Max days', ru: 'Макс. дней', uz: 'Max. kun')} ${listing.maxDays}'),
                         _InfoChip(label: _typeLabel(context, listing.type)),
                       ],
                     ),
@@ -189,11 +189,11 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_t(context, en: 'Amenities', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Qulayliklar'), style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 22)),
+                    Text(_t(context, en: 'Amenities', ru: 'Удобства', uz: 'Qulayliklar'), style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 22)),
                     const SizedBox(height: 14),
                     if (listing.amenities.isEmpty)
                       Text(
-                        _t(context, en: 'Amenities are not available in this listing yet.', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', uz: 'Qulayliklar hali ko\'rsatilmagan.'),
+                        _t(context, en: 'Amenities are not available in this listing yet.', ru: 'Удобства для этого жилья пока не указаны.', uz: 'Qulayliklar hali ko\'rsatilmagan.'),
                         style: const TextStyle(color: AppColors.textMuted),
                       )
                     else
@@ -223,24 +223,24 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_t(context, en: 'Host contact', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Host aloqasi'), style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 22)),
+                    Text(_t(context, en: 'Host contact', ru: 'Контакты хозяина', uz: 'Host aloqasi'), style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 22)),
                     const SizedBox(height: 12),
                     Text(
-                      (listing.hostName ?? '').trim().isEmpty ? _t(context, en: 'Host', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Host') : listing.hostName!.trim(),
+                      (listing.hostName ?? '').trim().isEmpty ? _t(context, en: 'Host', ru: 'Хозяин', uz: 'Host') : listing.hostName!.trim(),
                       style: const TextStyle(color: AppColors.text, fontSize: 18, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       (listing.hostPhone ?? '').trim().isEmpty
-                          ? _t(context, en: 'Please message the host in chat first.', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ.', uz: 'Avval hostga chatda yozing.')
-                          : '${_t(context, en: 'Phone', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Telefon')}: ${listing.hostPhone!.trim()}',
+                          ? _t(context, en: 'Please message the host in chat first.', ru: 'Сначала свяжитесь с хозяином в чате.', uz: 'Avval hostga chatda yozing.')
+                          : '${_t(context, en: 'Phone', ru: 'Телефон', uz: 'Telefon')}: ${listing.hostPhone!.trim()}',
                       style: const TextStyle(color: AppColors.textMuted, height: 1.45),
                     ),
                     const SizedBox(height: 14),
                     OutlinedButton.icon(
                       onPressed: () => _openChat(listing),
                       icon: const Icon(Icons.chat_bubble_outline_rounded),
-                      label: Text(_t(context, en: 'Message', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Yozish')),
+                      label: Text(_t(context, en: 'Message', ru: 'Написать', uz: 'Yozish')),
                     ),
                   ],
                 ),
@@ -251,13 +251,13 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_t(context, en: 'Location', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Joylashuv'), style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 22)),
+                    Text(_t(context, en: 'Location', ru: 'Локация', uz: 'Joylashuv'), style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 22)),
                     const SizedBox(height: 12),
-                    _DetailLine(label: _t(context, en: 'Address', ru: 'пїЅпїЅпїЅпїЅпїЅ', uz: 'Manzil'), value: '${listing.city}, ${listing.district}'),
+                    _DetailLine(label: _t(context, en: 'Address', ru: 'Адрес', uz: 'Manzil'), value: '${listing.city}, ${listing.district}'),
                     if ((listing.landmark ?? '').trim().isNotEmpty)
-                      _DetailLine(label: _t(context, en: 'Landmark', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Mo\'ljal'), value: listing.landmark!.trim()),
+                      _DetailLine(label: _t(context, en: 'Landmark', ru: 'Ориентир', uz: 'Mo\'ljal'), value: listing.landmark!.trim()),
                     if ((listing.metro ?? '').trim().isNotEmpty)
-                      _DetailLine(label: _t(context, en: 'Metro', ru: 'пїЅпїЅпїЅпїЅпїЅ', uz: 'Metro'), value: listing.metro!.trim()),
+                      _DetailLine(label: _t(context, en: 'Metro', ru: 'Метро', uz: 'Metro'), value: listing.metro!.trim()),
                     const SizedBox(height: 14),
                     InkWell(
                       borderRadius: BorderRadius.circular(22),
@@ -294,7 +294,7 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      _t(context, en: 'Open in Google Maps', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ Google Maps', uz: 'Google Mapsda ochish'),
+                                      _t(context, en: 'Open in Google Maps', ru: 'Открыть в Google Maps', uz: 'Google Mapsda ochish'),
                                       style: const TextStyle(
                                         color: AppColors.text,
                                         fontWeight: FontWeight.w800,
@@ -303,7 +303,7 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      _t(context, en: 'Tap to open the location pin.', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.', uz: 'Xaritadagi nuqtani ochish uchun bosing.'),
+                                      _t(context, en: 'Tap to open the location pin.', ru: 'Нажмите, чтобы открыть точку на карте.', uz: 'Xaritadagi nuqtani ochish uchun bosing.'),
                                       style: const TextStyle(
                                         color: AppColors.textMuted,
                                         height: 1.35,
@@ -336,7 +336,7 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () => _openChat(listing),
                       icon: const Icon(Icons.chat_bubble_outline_rounded),
-                      label: Text(_t(context, en: 'Chat', ru: 'пїЅпїЅпїЅ', uz: 'Chat')),
+                      label: Text(_t(context, en: 'Chat', ru: 'Чат', uz: 'Chat')),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -345,7 +345,7 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
                     child: FilledButton.icon(
                       onPressed: () => context.push('${RouteNames.bookingRequest}/${listing.id}'),
                       icon: const Icon(Icons.event_available_rounded),
-                      label: Text(_t(context, en: 'Request booking', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ', uz: 'Bron so\'rovi')),
+                      label: Text(_t(context, en: 'Request booking', ru: 'Запросить бронь', uz: 'Bron so\'rovi')),
                     ),
                   ),
                 ],
@@ -360,11 +360,11 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
   Future<void> _openWriteReview(Listing listing, List<Review> reviews) async {
     final userId = ref.read(authControllerProvider).valueOrNull?.user?.id;
     if (userId == null || userId.isEmpty) {
-      _showSnack(_t(context, en: 'Please sign in again.', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.', uz: 'Iltimos, qayta kiring.'));
+      _showSnack(_t(context, en: 'Please sign in again.', ru: 'Пожалуйста, войдите снова.', uz: 'Iltimos, qayta kiring.'));
       return;
     }
     if (reviews.any((review) => review.reviewerUserId == userId)) {
-      _showSnack(_t(context, en: 'You already added a review for this stay.', ru: 'пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.', uz: 'Siz bu turar joy uchun sharh qoldirgansiz.'));
+      _showSnack(_t(context, en: 'You already added a review for this stay.', ru: 'Вы уже оставили отзыв для этого жилья.', uz: 'Siz bu turar joy uchun sharh qoldirgansiz.'));
       return;
     }
     final bookings = await ref.read(bookingRepositoryProvider).getGuestBookings(userId);
@@ -378,7 +378,7 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
       }
     }
     if (eligible == null) {
-      _showSnack(_t(context, en: 'You can leave a review after a completed stay.', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', uz: 'Sharhni faqat yakunlangan turardan keyin qoldirish mumkin.'));
+      _showSnack(_t(context, en: 'You can leave a review after a completed stay.', ru: 'Оставить отзыв можно после завершённого проживания.', uz: 'Sharhni faqat yakunlangan turardan keyin qoldirish mumkin.'));
       return;
     }
     await context.push('${RouteNames.reviewSubmit}/${eligible.id}');
@@ -390,11 +390,11 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(_t(dialogContext, en: 'Delete review?', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ?', uz: 'Sharh o\'chirilsinmi?')),
-        content: Text(_t(dialogContext, en: 'This action cannot be undone.', ru: 'пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', uz: 'Bu amalni ortga qaytarib bo\'lmaydi.')),
+        title: Text(_t(dialogContext, en: 'Delete review?', ru: 'Удалить отзыв?', uz: 'Sharh o\'chirilsinmi?')),
+        content: Text(_t(dialogContext, en: 'This action cannot be undone.', ru: 'Это действие нельзя отменить.', uz: 'Bu amalni ortga qaytarib bo\'lmaydi.')),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(_t(dialogContext, en: 'Cancel', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Bekor qilish'))),
-          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(_t(dialogContext, en: 'Delete', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'O\'chirish'))),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(_t(dialogContext, en: 'Cancel', ru: 'Отмена', uz: 'Bekor qilish'))),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(_t(dialogContext, en: 'Delete', ru: 'Удалить', uz: 'O\'chirish'))),
         ],
       ),
     );
@@ -402,7 +402,7 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
     await ref.read(reviewsRepositoryProvider).deleteReview(reviewId);
     if (!mounted) return;
     ref.invalidate(listingReviewsProvider(widget.listingId));
-    _showSnack(_t(context, en: 'Review deleted', ru: 'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ', uz: 'Sharh o\'chirildi'));
+    _showSnack(_t(context, en: 'Review deleted', ru: 'Отзыв удалён', uz: 'Sharh o\'chirildi'));
   }
 
   Future<void> _openChat(Listing listing) async {
@@ -410,39 +410,13 @@ class _ListingDetailsScreenState extends ConsumerState<ListingDetailsScreen> {
   }
 
   Future<void> _openMap(Listing listing) async {
-    final coordinates = _extractCoordinates(listing);
-    final opened = await openGoogleMaps(
-      query: <String>[
-        listing.title,
-        listing.city,
-        listing.district,
-        listing.landmark ?? '',
-        listing.metro ?? '',
-      ].where((item) => item.trim().isNotEmpty).join(', '),
-      latitude: coordinates?.$1,
-      longitude: coordinates?.$2,
-    );
+    final query = <String>[listing.title, listing.city, listing.district, listing.landmark ?? '', listing.metro ?? '']
+        .where((item) => item.trim().isNotEmpty)
+        .join(', ');
+    final opened = await openGoogleMaps(query: query);
     if (!opened && mounted) {
-      _showSnack(_t(context, en: 'Could not open Google Maps.', ru: 'пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Google Maps.', uz: 'Google Mapsni ochib bo\'lmadi.'));
+      _showSnack(_t(context, en: 'Could not open Google Maps.', ru: 'Не удалось открыть Google Maps.', uz: 'Google Mapsni ochib bo\'lmadi.'));
     }
-  }
-
-  (double, double)? _extractCoordinates(Listing listing) {
-    final text = (listing.landmark ?? '').trim();
-    final match = RegExp(r'^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$')
-        .firstMatch(text);
-    if (match == null) {
-      return null;
-    }
-    final lat = double.tryParse(match.group(1) ?? '');
-    final lng = double.tryParse(match.group(2) ?? '');
-    if (lat == null || lng == null) {
-      return null;
-    }
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      return null;
-    }
-    return (lat, lng);
   }
 
   void _goBack() {
@@ -489,7 +463,7 @@ class _ReviewsSection extends ConsumerWidget {
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (_, _) => Text(
-        _t(context, en: 'Could not load reviews.', ru: 'пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.', uz: 'Sharhlarni yuklab bo\'lmadi.'),
+        _t(context, en: 'Could not load reviews.', ru: 'Не удалось загрузить отзывы.', uz: 'Sharhlarni yuklab bo\'lmadi.'),
         style: const TextStyle(color: AppColors.textMuted),
       ),
       data: (reviews) {
@@ -503,7 +477,7 @@ class _ReviewsSection extends ConsumerWidget {
                 _t(
                   context,
                   en: 'No guest reviews yet',
-                  ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ',
+                  ru: 'Отзывов гостей пока нет',
                   uz: 'Hozircha sharh yo\'q',
                 ),
                 style: const TextStyle(color: AppColors.textMuted),
@@ -544,7 +518,7 @@ class _ReviewsSection extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    '${reviews.length} ${_t(context, en: 'reviews', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'sharh')}',
+                    '${reviews.length} ${_t(context, en: 'reviews', ru: 'отзывов', uz: 'sharh')}',
                     style: const TextStyle(
                       color: AppColors.textMuted,
                       fontWeight: FontWeight.w600,
@@ -558,25 +532,25 @@ class _ReviewsSection extends ConsumerWidget {
               runSpacing: 10,
               children: [
                 ChoiceChip(
-                  label: Text(_t(context, en: 'Newest', ru: 'пїЅпїЅпїЅпїЅпїЅ', uz: 'Yangi')),
+                  label: Text(_t(context, en: 'Newest', ru: 'Новые', uz: 'Yangi')),
                   selected: sort == _ReviewSort.newest,
                   onSelected: (_) => onSortChanged(_ReviewSort.newest),
                 ),
                 ChoiceChip(
-                  label: Text(_t(context, en: 'Popular', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Mashhur')),
+                  label: Text(_t(context, en: 'Popular', ru: 'Популярные', uz: 'Mashhur')),
                   selected: sort == _ReviewSort.popular,
                   onSelected: (_) => onSortChanged(_ReviewSort.popular),
                 ),
                 FilledButton.tonal(
                   onPressed: () => onWriteReview(reviews),
-                  child: Text(_t(context, en: 'Write review', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ', uz: 'Sharh yozish')),
+                  child: Text(_t(context, en: 'Write review', ru: 'Написать отзыв', uz: 'Sharh yozish')),
                 ),
               ],
             ),
             const SizedBox(height: 14),
             if (reviews.isEmpty)
               Text(
-                _t(context, en: 'This apartment does not have public reviews yet.', ru: 'пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', uz: 'Bu turar joyda hozircha ommaviy sharh yo\'q.'),
+                _t(context, en: 'This apartment does not have public reviews yet.', ru: 'У этого жилья пока нет публичных отзывов.', uz: 'Bu turar joyda hozircha ommaviy sharh yo\'q.'),
                 style: const TextStyle(color: AppColors.textMuted, height: 1.45),
               )
             else ...[
@@ -595,7 +569,7 @@ class _ReviewsSection extends ConsumerWidget {
                 child: TextButton.icon(
                   onPressed: () => _showAllReviews(context, sorted),
                   icon: const Icon(Icons.reviews_outlined),
-                  label: Text(_t(context, en: 'See all reviews', ru: 'пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Barcha sharhlar')),
+                  label: Text(_t(context, en: 'See all reviews', ru: 'Все отзывы', uz: 'Barcha sharhlar')),
                 ),
               ),
             ],
@@ -616,7 +590,7 @@ class _ReviewsSection extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
           child: Column(
             children: [
-              Text(_t(context, en: 'All reviews', ru: 'пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Barcha sharhlar'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
+              Text(_t(context, en: 'All reviews', ru: 'Все отзывы', uz: 'Barcha sharhlar'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
               const SizedBox(height: 16),
               Expanded(
                 child: ListView.separated(
@@ -662,7 +636,7 @@ class _ReviewTile extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    (review.reviewerName ?? '').trim().isEmpty ? _t(context, en: 'Guest', ru: 'пїЅпїЅпїЅпїЅпїЅ', uz: 'Mehmon') : review.reviewerName!.trim(),
+                    (review.reviewerName ?? '').trim().isEmpty ? _t(context, en: 'Guest', ru: 'Гость', uz: 'Mehmon') : review.reviewerName!.trim(),
                     style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.w800, fontSize: 17),
                   ),
                 ),
@@ -672,14 +646,14 @@ class _ReviewTile extends StatelessWidget {
                   IconButton(
                     onPressed: () => onDeleteReview(review.id),
                     icon: const Icon(Icons.delete_outline_rounded),
-                    tooltip: _t(context, en: 'Delete', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'O\'chirish'),
+                    tooltip: _t(context, en: 'Delete', ru: 'Удалить', uz: 'O\'chirish'),
                   ),
                 ],
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              review.comment.trim().isEmpty ? _t(context, en: 'No written comment.', ru: 'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.', uz: 'Sharh matni qo\'shilmagan.') : review.comment.trim(),
+              review.comment.trim().isEmpty ? _t(context, en: 'No written comment.', ru: 'Текст отзыва не добавлен.', uz: 'Sharh matni qo\'shilmagan.') : review.comment.trim(),
               style: const TextStyle(color: AppColors.textSoft, height: 1.45),
             ),
             const SizedBox(height: 6),
@@ -876,11 +850,11 @@ List<Review> _sortReviews(List<Review> reviews, _ReviewSort sort) {
 
 String _priceLabel(BuildContext context, Listing listing) {
   if (listing.type == ListingType.freeStay) {
-    return _t(context, en: 'Free stay', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Bepul');
+    return _t(context, en: 'Free stay', ru: 'Бесплатно', uz: 'Bepul');
   }
   final price = listing.nightlyPriceUzs;
   if (price == null || price <= 0) {
-    return _t(context, en: 'Price on request', ru: 'пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Narx so\'rov bo\'yicha');
+    return _t(context, en: 'Price on request', ru: 'Цена по запросу', uz: 'Narx so\'rov bo\'yicha');
   }
   return '${_formatUzs(price)} UZS';
 }
@@ -888,13 +862,13 @@ String _priceLabel(BuildContext context, Listing listing) {
 String _typeLabel(BuildContext context, ListingType type) {
   switch (type) {
     case ListingType.room:
-      return _t(context, en: 'Room', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Xona');
+      return _t(context, en: 'Room', ru: 'Комната', uz: 'Xona');
     case ListingType.homePart:
-      return _t(context, en: 'Home part', ru: 'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ', uz: 'Uyning bir qismi');
+      return _t(context, en: 'Home part', ru: 'Часть дома', uz: 'Uyning bir qismi');
     case ListingType.freeStay:
-      return _t(context, en: 'Free stay', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Bepul turar joy');
+      return _t(context, en: 'Free stay', ru: 'Бесплатное проживание', uz: 'Bepul turar joy');
     case ListingType.apartment:
-      return _t(context, en: 'Apartment', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Kvartira');
+      return _t(context, en: 'Apartment', ru: 'Квартира', uz: 'Kvartira');
   }
 }
 
@@ -903,27 +877,27 @@ String _amenityLabel(BuildContext context, ListingAmenity amenity) {
     case ListingAmenity.wifi:
       return 'Wi-Fi';
     case ListingAmenity.airConditioner:
-      return _t(context, en: 'Air conditioner', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Konditsioner');
+      return _t(context, en: 'Air conditioner', ru: 'Кондиционер', uz: 'Konditsioner');
     case ListingAmenity.kitchen:
-      return _t(context, en: 'Kitchen', ru: 'пїЅпїЅпїЅпїЅпїЅ', uz: 'Oshxona');
+      return _t(context, en: 'Kitchen', ru: 'Кухня', uz: 'Oshxona');
     case ListingAmenity.washingMachine:
-      return _t(context, en: 'Washing machine', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Kir yuvish mashinasi');
+      return _t(context, en: 'Washing machine', ru: 'Стиральная машина', uz: 'Kir yuvish mashinasi');
     case ListingAmenity.parking:
-      return _t(context, en: 'Parking', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Avtoturargoh');
+      return _t(context, en: 'Parking', ru: 'Парковка', uz: 'Avtoturargoh');
     case ListingAmenity.privateBathroom:
-      return _t(context, en: 'Private bathroom', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Shaxsiy hammom');
+      return _t(context, en: 'Private bathroom', ru: 'Отдельная ванная', uz: 'Shaxsiy hammom');
     case ListingAmenity.kidsAllowed:
-      return _t(context, en: 'Children allowed', ru: 'пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Bolalar mumkin');
+      return _t(context, en: 'Children allowed', ru: 'Можно с детьми', uz: 'Bolalar mumkin');
     case ListingAmenity.petsAllowed:
-      return _t(context, en: 'Pets allowed', ru: 'пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Uy hayvonlari mumkin');
+      return _t(context, en: 'Pets allowed', ru: 'Можно с животными', uz: 'Uy hayvonlari mumkin');
     case ListingAmenity.womenOnly:
-      return _t(context, en: 'Women only', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Faqat ayollar uchun');
+      return _t(context, en: 'Women only', ru: 'Только для женщин', uz: 'Faqat ayollar uchun');
     case ListingAmenity.menOnly:
-      return _t(context, en: 'Men only', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Faqat erkaklar uchun');
+      return _t(context, en: 'Men only', ru: 'Только для мужчин', uz: 'Faqat erkaklar uchun');
     case ListingAmenity.hostLivesTogether:
-      return _t(context, en: 'Host lives together', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Host birga yashaydi');
+      return _t(context, en: 'Host lives together', ru: 'Хозяин живёт вместе', uz: 'Host birga yashaydi');
     case ListingAmenity.instantConfirm:
-      return _t(context, en: 'Instant confirm', ru: 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', uz: 'Darhol tasdiq');
+      return _t(context, en: 'Instant confirm', ru: 'Мгновенное подтверждение', uz: 'Darhol tasdiq');
   }
 }
 

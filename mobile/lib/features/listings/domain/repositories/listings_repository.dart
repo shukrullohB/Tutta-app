@@ -11,12 +11,9 @@ abstract interface class ListingsRepository {
 
   Future<Listing?> getById(String listingId);
 
-  Future<List<Listing>> getMine({bool includeInactive = false});
-
   Future<List<Listing>> getByHost({
     required String hostId,
     required bool hasPremium,
-    bool includeInactive = false,
   });
 
   Future<Listing> createListing(CreateListingInput input);

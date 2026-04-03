@@ -68,8 +68,9 @@ class SearchMapScreen extends ConsumerWidget {
                         leading: const Icon(Icons.place_outlined),
                         title: Text(item.title),
                         subtitle: Text('${item.city}, ${item.district}'),
-                        onTap: () =>
-                            context.push(RouteNames.listingDetailsById(item.id)),
+                        onTap: () => context.push(
+                          '${RouteNames.listingDetails}/${item.id}',
+                        ),
                       );
                     },
                   ),
@@ -88,7 +89,7 @@ PlacemarkMapObject _toPlacemark(BuildContext context, int index, Listing item) {
     opacity: 0.95,
     consumeTapEvents: true,
     onTap: (_, _) {
-      context.push(RouteNames.listingDetailsById(item.id));
+      context.push('${RouteNames.listingDetails}/${item.id}');
     },
   );
 }
