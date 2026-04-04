@@ -22,8 +22,7 @@ RUN apt-get update \
       curl \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps first to leverage Docker layer caching
-COPY ./requirements.txt requirements.txt
+COPY requirements.txt requirements.txt
 
 # Use python -m pip so we never rely on a 'pip' binary being present
 RUN python -m pip install --upgrade pip \
