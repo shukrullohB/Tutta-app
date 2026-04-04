@@ -58,11 +58,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final onboardingCompleted = session.onboardingCompleted;
       final roleSelected = session.activeRole != null;
 
-      if (bootstrapping) {
-        return location == RouteNames.splash ? null : RouteNames.splash;
+      if (location == RouteNames.splash) {
+        return null;
       }
 
-      if (location == RouteNames.splash) {
+      // Do not force users back to splash while state hydration is pending.
+      // Splash screen itself already handles waiting + fallback navigation.
+      if (bootstrapping) {
         return null;
       }
 
