@@ -134,6 +134,16 @@ class GoogleLoginSerializer(serializers.Serializer):
 
         idinfo = {}
         last_error = None
+
+        def _fetch_userinfo_from_access_token(token_value):
+            req = urllib_request.Request(
+                'https://www.googleapis.com/oauth2/v3/userinfo',
+                headers={'Authorization': f'Bearer {token_value}'},
+            )
+            with urllib_request.urlopen(req, timeout=5) as resp:
+                payload = resp.read().decode('utf-8')
+            return json.loads(payload)
+
         if token:
             request = google_requests.Request()
             for client_id in client_ids:
@@ -142,19 +152,24 @@ class GoogleLoginSerializer(serializers.Serializer):
                     break
                 except Exception as exc:  # noqa: BLE001
                     last_error = exc
+
+            # Fallback: some Android builds provide a valid access_token while
+            # id_token audience verification fails; do not fail login in that case.
+            if not idinfo and access_token:
+                try:
+                    idinfo = _fetch_userinfo_from_access_token(access_token)
+                except (urllib_error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                    raise serializers.ValidationError(
+                        {'access_token': 'Invalid Google access token.'}
+                    ) from exc
+
             if not idinfo:
                 raise serializers.ValidationError(
                     {'id_token': 'Invalid Google token.'}
                 ) from last_error
         else:
             try:
-                req = urllib_request.Request(
-                    'https://www.googleapis.com/oauth2/v3/userinfo',
-                    headers={'Authorization': f'Bearer {access_token}'},
-                )
-                with urllib_request.urlopen(req, timeout=5) as resp:
-                    payload = resp.read().decode('utf-8')
-                idinfo = json.loads(payload)
+                idinfo = _fetch_userinfo_from_access_token(access_token)
             except (urllib_error.URLError, TimeoutError, json.JSONDecodeError) as exc:
                 raise serializers.ValidationError(
                     {'access_token': 'Invalid Google access token.'}
