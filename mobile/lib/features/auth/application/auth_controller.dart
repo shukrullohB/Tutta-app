@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'dart:developer' as developer;
 
 import '../../../core/config/runtime_flags.dart';
 import '../../../core/errors/app_exception.dart';
@@ -43,6 +44,10 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
 
   Future<bool> signInWithGoogle() async {
     _authEpoch++;
+    developer.log(
+      'signInWithGoogle:start epoch=$_authEpoch',
+      name: 'AUTH_TRACE',
+    );
     state = const AsyncValue.loading();
 
     try {
@@ -69,8 +74,13 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
         }
         final account = await googleSignIn.signIn();
         if (account == null) {
+          developer.log('signInWithGoogle:cancelled', name: 'AUTH_TRACE');
           throw const AppException('Google sign-in was cancelled.');
         }
+        developer.log(
+          'signInWithGoogle:google account selected email=${account.email}',
+          name: 'AUTH_TRACE',
+        );
 
         final auth = await account.authentication;
         final resolvedIdToken = auth.idToken?.trim();
@@ -88,11 +98,20 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
         displayName = account.displayName;
       }
 
+      developer.log(
+        'signInWithGoogle:calling backend idToken=${idToken.isNotEmpty} accessToken=${(accessToken ?? '').isNotEmpty}',
+        name: 'AUTH_TRACE',
+      );
+
       final user = await _authRepository.signInWithGoogle(
         idToken: idToken,
         accessToken: accessToken,
         email: email,
         displayName: displayName,
+      );
+      developer.log(
+        'signInWithGoogle:backend success userId=${user.id}',
+        name: 'AUTH_TRACE',
       );
 
       final access = user.accessToken;
@@ -110,16 +129,29 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
           .read(secureStorageServiceProvider)
           .saveTokens(accessToken: access, refreshToken: refreshToken);
       _read.read(authTokenProvider.notifier).state = access;
+      developer.log(
+        'signInWithGoogle:tokens saved and auth token provider updated',
+        name: 'AUTH_TRACE',
+      );
 
       _lastOtpPhone = null;
       state = AsyncValue.data(
         AuthState(user: user, phoneForOtp: null, hydrated: true),
       );
+      developer.log('signInWithGoogle:done success=true', name: 'AUTH_TRACE');
       return true;
     } on AppException catch (error, stackTrace) {
+      developer.log(
+        'signInWithGoogle:AppException ${error.message}',
+        name: 'AUTH_TRACE',
+      );
       state = AsyncValue.error(error, stackTrace);
       return false;
     } catch (error, stackTrace) {
+      developer.log(
+        'signInWithGoogle:Exception $error',
+        name: 'AUTH_TRACE',
+      );
       state = AsyncValue.error(AppException(error.toString()), stackTrace);
       return false;
     }
