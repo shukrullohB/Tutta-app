@@ -28,8 +28,7 @@ COPY . .
 RUN python -m pip install --upgrade pip \
   && python -m pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the app
-COPY . .
+
 
 # Collect static at build time (safe; does not require DB)
 RUN python manage.py collectstatic --noinput
