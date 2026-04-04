@@ -30,6 +30,7 @@ import '../../features/profile/presentation/screens/notification_preferences_scr
 import '../../features/reviews/presentation/screens/review_submit_screen.dart';
 import '../../features/role/presentation/screens/role_selector_screen.dart';
 import '../../features/wishlist/presentation/screens/favorites_screen.dart';
+import '../../core/network/auth_token_provider.dart';
 import 'route_names.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -48,10 +49,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authAsync = ref.read(authControllerProvider);
       final authState = authAsync.valueOrNull;
-      final isLoggedIn = authState?.isAuthenticated ?? false;
-      final authHydrated = authAsync.hasValue
-          ? (authState?.hydrated ?? false)
-          : true;
+      final authToken = ref.read(authTokenProvider);
+      final hasToken = authToken != null && authToken.isNotEmpty;
+      final isLoggedIn = (authState?.isAuthenticated ?? false) || hasToken;
+      final authHydrated = authState?.hydrated ?? false;
       final session = ref.read(appSessionControllerProvider);
       final location = state.matchedLocation;
       final bootstrapping = !authHydrated || !session.hydrated;
@@ -297,6 +298,8 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
     }
     final authSnapshot = ref.read(authControllerProvider);
     final authState = authSnapshot.valueOrNull;
+    final authToken = ref.read(authTokenProvider);
+    final hasToken = authToken != null && authToken.isNotEmpty;
     final session = ref.read(appSessionControllerProvider);
     final authPending = authSnapshot.isLoading || (authSnapshot.hasValue && !(authState?.hydrated ?? false));
     if (authPending || !session.hydrated) {
@@ -310,7 +313,7 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
       return;
     }
     _guardTicks = 0;
-    final isLoggedIn = authState?.isAuthenticated ?? false;
+    final isLoggedIn = (authState?.isAuthenticated ?? false) || hasToken;
 
     if (!session.onboardingCompleted) {
       context.go(RouteNames.onboarding);
