@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,9 +72,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!onboardingCompleted &&
           location != RouteNames.onboarding &&
           location != RouteNames.splash) {
-        developer.log(
-          'redirect -> onboarding (location=$location, loggedIn=$isLoggedIn, hydrated=$authHydrated)',
-          name: 'AUTH_TRACE',
+        print(
+          '[AUTH_TRACE] redirect -> onboarding (location=$location, loggedIn=$isLoggedIn, hydrated=$authHydrated)',
         );
         return RouteNames.onboarding;
       }
@@ -85,9 +83,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location != RouteNames.auth &&
           location != RouteNames.authVerify &&
           location != RouteNames.splash) {
-        developer.log(
-          'redirect -> auth (location=$location, loggedIn=$isLoggedIn, hydrated=$authHydrated)',
-          name: 'AUTH_TRACE',
+        print(
+          '[AUTH_TRACE] redirect -> auth (location=$location, loggedIn=$isLoggedIn, hydrated=$authHydrated)',
         );
         return RouteNames.auth;
       }
@@ -97,9 +94,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           onboardingCompleted &&
           location != RouteNames.roleSelector &&
           location != RouteNames.splash) {
-        developer.log(
-          'redirect -> roleSelector (location=$location, loggedIn=$isLoggedIn, roleSelected=$roleSelected)',
-          name: 'AUTH_TRACE',
+        print(
+          '[AUTH_TRACE] redirect -> roleSelector (location=$location, loggedIn=$isLoggedIn, roleSelected=$roleSelected)',
         );
         return RouteNames.roleSelector;
       }
@@ -108,9 +104,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         if (location == RouteNames.auth ||
             location == RouteNames.authVerify ||
             location == RouteNames.onboarding) {
-          developer.log(
-            'redirect -> home (location=$location, loggedIn=$isLoggedIn, roleSelected=$roleSelected)',
-            name: 'AUTH_TRACE',
+          print(
+            '[AUTH_TRACE] redirect -> home (location=$location, loggedIn=$isLoggedIn, roleSelected=$roleSelected)',
           );
           return RouteNames.home;
         }

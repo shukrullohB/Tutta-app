@@ -24,12 +24,26 @@ final dioProvider = Provider<Dio>((ref) {
   client.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
+        if (options.path.contains('/auth/google')) {
+          print('[AUTH_TRACE] HTTP -> ${options.method} ${options.uri}');
+        }
         if (authToken != null && authToken.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $authToken';
         }
         handler.next(options);
       },
+      onResponse: (response, handler) {
+        if (response.requestOptions.path.contains('/auth/google')) {
+          print('[AUTH_TRACE] HTTP <- ${response.statusCode} ${response.requestOptions.uri}');
+        }
+        handler.next(response);
+      },
       onError: (error, handler) {
+        if (error.requestOptions.path.contains('/auth/google')) {
+          print(
+            '[AUTH_TRACE] HTTP xx type=${error.type.name} status=${error.response?.statusCode} url=${error.requestOptions.uri}',
+          );
+        }
         handler.next(error);
       },
     ),
