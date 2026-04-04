@@ -39,8 +39,10 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
   final OtpAuthRepository _otpAuthRepository;
   final Ref _read;
   String? _lastOtpPhone;
+  int _authEpoch = 0;
 
   Future<bool> signInWithGoogle() async {
+    _authEpoch++;
     state = const AsyncValue.loading();
 
     try {
@@ -230,6 +232,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
   }
 
   Future<void> login({required String email, required String password}) async {
+    _authEpoch++;
     state = const AsyncValue.loading();
 
     try {
@@ -270,6 +273,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
     required String role,
     String? phoneNumber,
   }) async {
+    _authEpoch++;
     state = const AsyncValue.loading();
 
     try {
@@ -290,6 +294,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
   }
 
   Future<void> restoreSession() async {
+    final startedEpoch = _authEpoch;
     try {
       final storedAccess = await _read
           .read(secureStorageServiceProvider)
@@ -298,7 +303,14 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
           .read(secureStorageServiceProvider)
           .readRefreshToken();
 
+      if (startedEpoch != _authEpoch) {
+        return;
+      }
+
       if (storedAccess == null || storedAccess.isEmpty) {
+        if (startedEpoch != _authEpoch) {
+          return;
+        }
         state = AsyncValue.data(
           const AuthState.initial().copyWith(hydrated: true),
         );
@@ -309,6 +321,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
 
       try {
         final me = await _authRepository.me();
+        if (startedEpoch != _authEpoch) {
+          return;
+        }
         state = AsyncValue.data(
           AuthState(user: me, phoneForOtp: null, hydrated: true),
         );
@@ -322,6 +337,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
           final rotated = await _authRepository.refresh(
             refreshToken: storedRefresh,
           );
+          if (startedEpoch != _authEpoch) {
+            return;
+          }
           final access = rotated['access'] ?? '';
           final refresh = rotated['refresh'] ?? storedRefresh;
           if (access.isNotEmpty) {
@@ -330,6 +348,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
                 .saveTokens(accessToken: access, refreshToken: refresh);
             _read.read(authTokenProvider.notifier).state = access;
             final me = await _authRepository.me();
+            if (startedEpoch != _authEpoch) {
+              return;
+            }
             state = AsyncValue.data(
               AuthState(user: me, phoneForOtp: null, hydrated: true),
             );
@@ -340,6 +361,9 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
         }
       }
 
+      if (startedEpoch != _authEpoch) {
+        return;
+      }
       await _read.read(secureStorageServiceProvider).clearTokens();
       _read.read(authTokenProvider.notifier).state = null;
       _lastOtpPhone = null;
@@ -357,6 +381,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
   }
 
   Future<void> signOut() async {
+    _authEpoch++;
     state = const AsyncValue.loading();
 
     try {
