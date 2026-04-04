@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/theme/app_colors.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../home/application/app_session_controller.dart';
 
@@ -21,10 +22,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _OnboardingSlide(
       title: 'Find Your Perfect Stay',
       subtitle:
-          'Discover unique homes and rooms for short stays, from 1 day up to 1 month.',
+          'Discover verified rooms and apartments across Uzbekistan for short stays up to 30 days.',
       heroAssetPath: 'assets/images/start1.png',
-      heroTitle: 'CURATED COLLECTION',
-      heroValue: 'The Tutta Selection',
+      heroTitle: 'TRUSTED LISTINGS',
+      heroValue: 'Rooms & Apartments',
       heroIcon: Icons.verified_rounded,
       heroTop: Color(0xFF6B9CC7),
       heroBottom: Color(0xFF1D5A87),
@@ -32,20 +33,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _OnboardingSlide(
       title: 'Booking Made Simple',
       subtitle:
-          'Secure your reservation in just a few clicks with our fast and safe payment options.',
+          'Send a booking request, chat with host, and confirm your stay in a few taps.',
       heroAssetPath: 'assets/images/start2.png',
-      heroTitle: 'SELECT DATES',
-      heroValue: 'Oct 12 - Oct 18',
+      heroTitle: 'EASY FLOW',
+      heroValue: 'Request -> Confirm',
       heroIcon: Icons.calendar_month_rounded,
       heroTop: Color(0xFFE7ECF4),
       heroBottom: Color(0xFFD6DEE9),
     ),
     _OnboardingSlide(
-      title: 'Unlock Premium Stays with Your Skills',
+      title: 'Free Stay and Language Exchange',
       subtitle:
-          'Exchange your expertise in design, photography, or language for a free stay with verified hosts.',
-      heroTitle: 'SKILL VERIFIED',
-      heroValue: 'Photography',
+          'Premium users can discover free-stay hosts for cultural and language exchange.',
+      heroAssetPath: 'assets/images/home3.png',
+      heroTitle: 'PREMIUM FEATURE',
+      heroValue: 'Free Stay Access',
       heroIcon: Icons.camera_alt_rounded,
       heroTop: Color(0xFFCFD3A9),
       heroBottom: Color(0xFFACB17D),
@@ -80,7 +82,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final isLast = _currentIndex == _slides.length - 1;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -128,9 +130,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         width: selected ? 54 : 12,
                         height: 12,
                         decoration: BoxDecoration(
-                          color: selected
-                              ? const Color(0xFF072A73)
-                              : const Color(0xFFD9DCE3),
+                          color: selected ? AppColors.primaryDeep : AppColors.border,
                           borderRadius: BorderRadius.circular(10),
                         ),
                       );
@@ -152,14 +152,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       },
                       style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(58),
-                        backgroundColor: const Color(0xFF072A73),
+                        backgroundColor: AppColors.primaryDeep,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
                       child: Text(
-                        isLast ? 'Get Started' : 'Next  ->',
+                        isLast ? 'Get Started' : 'Next',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
@@ -173,7 +173,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     onPressed: () => _finish(),
                     child: Text(
                       slide.showStep
-                          ? 'Tell me more about the exchange'
+                          ? 'Learn more about Free Stay'
                           : 'SKIP',
                       style: const TextStyle(
                         color: Color(0xFF3A4355),

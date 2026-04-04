@@ -127,18 +127,37 @@ class ApiClient {
 
   Failure _toFailure(DioException error) {
     final payload = error.response?.data;
+    final statusCode = error.response?.statusCode;
+    final requestUrl = error.requestOptions.uri.toString();
     String message = 'Network error. Please try again.';
 
-    if (payload is Map<String, dynamic>) {
-      final serverMessage = payload['message'];
-      final detail = payload['detail'];
+    if (payload is Map) {
+      final mapPayload = payload.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+      final serverMessage = mapPayload['message'];
+      final detail = mapPayload['detail'];
 
       if (serverMessage is String && serverMessage.isNotEmpty) {
         message = serverMessage;
       } else if (detail is String && detail.isNotEmpty) {
         message = detail;
+      } else if (mapPayload['errors'] is Map) {
+        final errors = (mapPayload['errors'] as Map).map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+        for (final value in errors.values) {
+          if (value is List && value.isNotEmpty && value.first is String) {
+            message = value.first as String;
+            break;
+          }
+          if (value is String && value.isNotEmpty) {
+            message = value;
+            break;
+          }
+        }
       } else {
-        for (final entry in payload.entries) {
+        for (final entry in mapPayload.entries) {
           final value = entry.value;
           if (value is List && value.isNotEmpty && value.first is String) {
             message = value.first as String;
@@ -150,11 +169,46 @@ class ApiClient {
           }
         }
       }
+    } else if (payload is String && payload.isNotEmpty) {
+      message = payload;
+    } else {
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+          message = 'Connection timeout. Check internet and try again.';
+          break;
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          message = 'Request timeout. Please try again.';
+          break;
+        case DioExceptionType.badCertificate:
+          message = 'Secure connection failed (SSL certificate).';
+          break;
+        case DioExceptionType.connectionError:
+          final reason = error.error?.toString().trim();
+          if (reason != null && reason.isNotEmpty) {
+            message = 'Cannot connect to server: $reason';
+          } else {
+            message = 'Cannot connect to server. Check internet connection.';
+          }
+          break;
+        case DioExceptionType.cancel:
+          message = 'Request was cancelled.';
+          break;
+        case DioExceptionType.unknown:
+        case DioExceptionType.badResponse:
+          final fallback = error.message?.trim();
+          if (fallback != null && fallback.isNotEmpty) {
+            message = fallback;
+          } else if (statusCode != null) {
+            message = 'Server returned HTTP $statusCode.';
+          }
+          break;
+      }
     }
 
     return Failure(
-      message: message,
-      statusCode: error.response?.statusCode,
+      message: '$message (request: $requestUrl)',
+      statusCode: statusCode,
       code: error.type.name,
     );
   }

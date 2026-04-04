@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -236,16 +238,25 @@ class _BrandSplashScreen extends ConsumerStatefulWidget {
 }
 
 class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
+  int _guardTicks = 0;
+  bool _animateIn = false;
+  Timer? _pendingContinue;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _animateIn = true);
+      }
+    });
     final session = ref.read(appSessionControllerProvider);
     if (session.splashSeen) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) {
           return;
         }
-        _continueFlow();
+        _scheduleContinue(const Duration(milliseconds: 1));
       });
       return;
     }
@@ -254,20 +265,40 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
         return;
       }
       ref.read(appSessionControllerProvider.notifier).markSplashSeen();
-      Future<void>.delayed(const Duration(milliseconds: 1400), _continueFlow);
+      _scheduleContinue(const Duration(milliseconds: 1400));
     });
+  }
+
+  @override
+  void dispose() {
+    _pendingContinue?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleContinue(Duration delay) {
+    _pendingContinue?.cancel();
+    _pendingContinue = Timer(delay, _continueFlow);
   }
 
   void _continueFlow() {
     if (!mounted) {
       return;
     }
-    final authState = ref.read(authControllerProvider).valueOrNull;
+    final authSnapshot = ref.read(authControllerProvider);
+    final authState = authSnapshot.valueOrNull;
     final session = ref.read(appSessionControllerProvider);
-    if ((authState?.hydrated ?? false) == false || !session.hydrated) {
-      Future<void>.delayed(const Duration(milliseconds: 60), _continueFlow);
+    final authPending = authSnapshot.isLoading || (authSnapshot.hasValue && !(authState?.hydrated ?? false));
+    if (authPending || !session.hydrated) {
+      _guardTicks += 1;
+      if (_guardTicks > 90) {
+        // Failsafe: do not keep users forever on splash.
+        context.go(RouteNames.auth);
+        return;
+      }
+      _scheduleContinue(const Duration(milliseconds: 60));
       return;
     }
+    _guardTicks = 0;
     final isLoggedIn = authState?.isAuthenticated ?? false;
 
     if (!session.onboardingCompleted) {
@@ -298,13 +329,23 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
               right: 0,
               child: IgnorePointer(
                 child: Center(
-                  child: Container(
-                    width: 320,
-                    height: 320,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [Color(0x30F15A24), Colors.transparent],
+                  child: AnimatedScale(
+                    scale: _animateIn ? 1 : 0.92,
+                    duration: const Duration(milliseconds: 420),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      opacity: _animateIn ? 1 : 0,
+                      duration: const Duration(milliseconds: 420),
+                      curve: Curves.easeOut,
+                      child: Container(
+                        width: 320,
+                        height: 320,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [Color(0x30F15A24), Colors.transparent],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -315,13 +356,22 @@ class _BrandSplashScreenState extends ConsumerState<_BrandSplashScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Tutta',
-                    style: const TextStyle(
-                      color: AppColors.primaryDeep,
-                      fontSize: 68,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -1.2,
+                  AnimatedSlide(
+                    offset: _animateIn ? Offset.zero : const Offset(0, 0.08),
+                    duration: const Duration(milliseconds: 420),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedOpacity(
+                      opacity: _animateIn ? 1 : 0,
+                      duration: const Duration(milliseconds: 420),
+                      child: Text(
+                        'Tutta',
+                        style: const TextStyle(
+                          color: AppColors.primaryDeep,
+                          fontSize: 68,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -1.2,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),

@@ -100,27 +100,32 @@ class AppSessionController extends StateNotifier<AppSessionState> {
   }
 
   Future<void> _restore() async {
-    final storage = _ref.read(secureStorageServiceProvider);
-    final onboardingRaw = await storage.readString(_onboardingKey);
-    final roleRaw = await storage.readString(_roleKey);
-    final splashRaw = await storage.readString(_splashKey);
+    try {
+      final storage = _ref.read(secureStorageServiceProvider);
+      final onboardingRaw = await storage.readString(_onboardingKey);
+      final roleRaw = await storage.readString(_roleKey);
+      final splashRaw = await storage.readString(_splashKey);
 
-    AppRole? restoredRole;
-    if (roleRaw != null && roleRaw.isNotEmpty) {
-      for (final role in AppRole.values) {
-        if (role.name == roleRaw) {
-          restoredRole = role;
-          break;
+      AppRole? restoredRole;
+      if (roleRaw != null && roleRaw.isNotEmpty) {
+        for (final role in AppRole.values) {
+          if (role.name == roleRaw) {
+            restoredRole = role;
+            break;
+          }
         }
       }
-    }
 
-    state = state.copyWith(
-      onboardingCompleted: onboardingRaw == 'true',
-      activeRole: restoredRole,
-      splashSeen: splashRaw == 'true',
-      hydrated: true,
-    );
+      state = state.copyWith(
+        onboardingCompleted: onboardingRaw == 'true',
+        activeRole: restoredRole,
+        splashSeen: splashRaw == 'true',
+        hydrated: true,
+      );
+    } catch (_) {
+      // Never block navigation on session restore failures.
+      state = state.copyWith(hydrated: true);
+    }
   }
 
   Future<void> _persistBool(String key, bool value) {

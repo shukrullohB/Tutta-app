@@ -5,7 +5,7 @@ import 'auth_token_provider.dart';
 
 const _defaultApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'https://api.tutta.uz/api',
+  defaultValue: 'https://tutta-app-production.up.railway.app/api',
 );
 
 final dioProvider = Provider<Dio>((ref) {

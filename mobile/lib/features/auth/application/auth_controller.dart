@@ -290,28 +290,33 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
   }
 
   Future<void> restoreSession() async {
-    final storedAccess = await _read
-        .read(secureStorageServiceProvider)
-        .readAccessToken();
-    final storedRefresh = await _read
-        .read(secureStorageServiceProvider)
-        .readRefreshToken();
-
-    if (storedAccess == null || storedAccess.isEmpty) {
-      state = AsyncValue.data(
-        const AuthState.initial().copyWith(hydrated: true),
-      );
-      return;
-    }
-
-    _read.read(authTokenProvider.notifier).state = storedAccess;
-
     try {
-      final me = await _authRepository.me();
-      state = AsyncValue.data(
-        AuthState(user: me, phoneForOtp: null, hydrated: true),
-      );
-    } on AppException {
+      final storedAccess = await _read
+          .read(secureStorageServiceProvider)
+          .readAccessToken();
+      final storedRefresh = await _read
+          .read(secureStorageServiceProvider)
+          .readRefreshToken();
+
+      if (storedAccess == null || storedAccess.isEmpty) {
+        state = AsyncValue.data(
+          const AuthState.initial().copyWith(hydrated: true),
+        );
+        return;
+      }
+
+      _read.read(authTokenProvider.notifier).state = storedAccess;
+
+      try {
+        final me = await _authRepository.me();
+        state = AsyncValue.data(
+          AuthState(user: me, phoneForOtp: null, hydrated: true),
+        );
+        return;
+      } on AppException {
+        // Try refresh fallback below.
+      }
+
       if (storedRefresh != null && storedRefresh.isNotEmpty) {
         try {
           final rotated = await _authRepository.refresh(
@@ -331,10 +336,23 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
             return;
           }
         } catch (_) {
-          // fallback below
+          // Continue to local sign-out fallback below.
         }
       }
-      await signOut();
+
+      await _read.read(secureStorageServiceProvider).clearTokens();
+      _read.read(authTokenProvider.notifier).state = null;
+      _lastOtpPhone = null;
+      state = AsyncValue.data(
+        const AuthState.initial().copyWith(hydrated: true),
+      );
+    } catch (_) {
+      await _read.read(secureStorageServiceProvider).clearTokens();
+      _read.read(authTokenProvider.notifier).state = null;
+      _lastOtpPhone = null;
+      state = AsyncValue.data(
+        const AuthState.initial().copyWith(hydrated: true),
+      );
     }
   }
 
@@ -354,16 +372,20 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
       state = AsyncValue.data(
         const AuthState.initial().copyWith(hydrated: true),
       );
-    } on AppException catch (error, stackTrace) {
+    } on AppException {
       await _read.read(secureStorageServiceProvider).clearTokens();
       _read.read(authTokenProvider.notifier).state = null;
       _lastOtpPhone = null;
-      state = AsyncValue.error(error, stackTrace);
-    } catch (error, stackTrace) {
+      state = AsyncValue.data(
+        const AuthState.initial().copyWith(hydrated: true),
+      );
+    } catch (_) {
       await _read.read(secureStorageServiceProvider).clearTokens();
       _read.read(authTokenProvider.notifier).state = null;
       _lastOtpPhone = null;
-      state = AsyncValue.error(AppException(error.toString()), stackTrace);
+      state = AsyncValue.data(
+        const AuthState.initial().copyWith(hydrated: true),
+      );
     }
   }
 

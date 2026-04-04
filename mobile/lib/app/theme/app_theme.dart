@@ -39,6 +39,15 @@ abstract final class AppTheme {
       fontFamily: 'Inter',
       colorScheme: colorScheme,
       brightness: Brightness.light,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+        },
+      ),
       scaffoldBackgroundColor: _background,
       appBarTheme: const AppBarTheme(
         centerTitle: false,
@@ -180,6 +189,15 @@ abstract final class AppTheme {
       fontFamily: 'Inter',
       colorScheme: colorScheme,
       brightness: Brightness.dark,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+        },
+      ),
       scaffoldBackgroundColor: const Color(0xFF17120F),
       appBarTheme: const AppBarTheme(
         centerTitle: false,
