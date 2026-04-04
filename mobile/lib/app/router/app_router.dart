@@ -34,35 +34,17 @@ import '../../core/network/auth_token_provider.dart';
 import 'route_names.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final refreshListenable = ValueNotifier<int>(0);
-  ref.onDispose(refreshListenable.dispose);
-
-  // Keep router instance stable and avoid Riverpod listen re-entrancy while
-  // auth notifier is dispatching updates.
-  final authNotifier = ref.watch(authControllerProvider.notifier);
-  final sessionNotifier = ref.watch(appSessionControllerProvider.notifier);
-  final removeAuthListener = authNotifier.addListener((_) {
-    refreshListenable.value++;
-  });
-  final removeSessionListener = sessionNotifier.addListener((_) {
-    refreshListenable.value++;
-  });
-  ref.onDispose(() {
-    removeAuthListener();
-    removeSessionListener();
-  });
+  final authAsync = ref.watch(authControllerProvider);
+  final authState = authAsync.valueOrNull;
+  final authToken = ref.watch(authTokenProvider);
+  final session = ref.watch(appSessionControllerProvider);
 
   return GoRouter(
     initialLocation: RouteNames.splash,
-    refreshListenable: refreshListenable,
     redirect: (context, state) {
-      final authAsync = ref.read(authControllerProvider);
-      final authState = authAsync.valueOrNull;
-      final authToken = ref.read(authTokenProvider);
       final hasToken = authToken != null && authToken.isNotEmpty;
       final isLoggedIn = (authState?.isAuthenticated ?? false) || hasToken;
       final authHydrated = authState?.hydrated ?? false;
-      final session = ref.read(appSessionControllerProvider);
       final location = state.matchedLocation;
       final bootstrapping = !authHydrated || !session.hydrated;
       final onboardingCompleted = session.onboardingCompleted;
