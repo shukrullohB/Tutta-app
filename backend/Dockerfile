@@ -16,8 +16,8 @@ RUN apt-get update \
       curl \
   && rm -rf /var/lib/apt/lists/*
 
-# Repo root'dan build bo'layotgan bo'lsa, backend dagi fayllarni /app ga copy qilamiz
-COPY backend/ /app/
+# Build context should be the backend directory (Railway root dir = backend)
+COPY . /app/
 
 RUN python -m pip install --upgrade pip \
   && python -m pip install --no-cache-dir -r requirements.txt
