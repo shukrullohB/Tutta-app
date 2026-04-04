@@ -36,11 +36,20 @@ import 'route_names.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshListenable = ValueNotifier<int>(0);
   ref.onDispose(refreshListenable.dispose);
-  ref.listen<AsyncValue<dynamic>>(authControllerProvider, (_, next) {
+
+  // Keep router instance stable and avoid Riverpod listen re-entrancy while
+  // auth notifier is dispatching updates.
+  final authNotifier = ref.watch(authControllerProvider.notifier);
+  final sessionNotifier = ref.watch(appSessionControllerProvider.notifier);
+  final removeAuthListener = authNotifier.addListener((_) {
     refreshListenable.value++;
   });
-  ref.listen(appSessionControllerProvider, (_, next) {
+  final removeSessionListener = sessionNotifier.addListener((_) {
     refreshListenable.value++;
+  });
+  ref.onDispose(() {
+    removeAuthListener();
+    removeSessionListener();
   });
 
   return GoRouter(
