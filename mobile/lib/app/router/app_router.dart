@@ -33,17 +33,26 @@ import '../../features/wishlist/presentation/screens/favorites_screen.dart';
 import 'route_names.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authAsync = ref.watch(authControllerProvider);
-  final authState = authAsync.valueOrNull;
-  final isLoggedIn = authState?.isAuthenticated ?? false;
-  final authHydrated = authAsync.hasValue
-      ? (authState?.hydrated ?? false)
-      : true;
-  final session = ref.watch(appSessionControllerProvider);
+  final refreshListenable = ValueNotifier<int>(0);
+  ref.onDispose(refreshListenable.dispose);
+  ref.listen<AsyncValue<dynamic>>(authControllerProvider, (_, next) {
+    refreshListenable.value++;
+  });
+  ref.listen(appSessionControllerProvider, (_, next) {
+    refreshListenable.value++;
+  });
 
   return GoRouter(
     initialLocation: RouteNames.splash,
+    refreshListenable: refreshListenable,
     redirect: (context, state) {
+      final authAsync = ref.read(authControllerProvider);
+      final authState = authAsync.valueOrNull;
+      final isLoggedIn = authState?.isAuthenticated ?? false;
+      final authHydrated = authAsync.hasValue
+          ? (authState?.hydrated ?? false)
+          : true;
+      final session = ref.read(appSessionControllerProvider);
       final location = state.matchedLocation;
       final bootstrapping = !authHydrated || !session.hydrated;
       final onboardingCompleted = session.onboardingCompleted;
