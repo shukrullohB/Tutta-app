@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="google_maps_api_key">PUT_GOOGLE_MAPS_API_KEY_HERE</string>
-    <string name="yandex_mapkit_api_key">PUT_YANDEX_API_KEY_HERE</string>
 </resources>

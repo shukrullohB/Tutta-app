@@ -22,6 +22,11 @@ if (hasReleaseSigning) {
     keyPropertiesFile.inputStream().use { keyProperties.load(it) }
 }
 
+fun signingProp(name: String): String {
+    return keyProperties.getProperty(name)
+        ?: error("Missing '$name' in android/key.properties")
+}
+
 android {
     namespace = "uz.tutta.app"
     compileSdk = flutter.compileSdkVersion
@@ -47,10 +52,10 @@ android {
     signingConfigs {
         if (hasReleaseSigning) {
             create("release") {
-                keyAlias = keyProperties["keyAlias"] as String
-                keyPassword = keyProperties["keyPassword"] as String
-                storeFile = file(keyProperties["storeFile"] as String)
-                storePassword = keyProperties["storePassword"] as String
+                keyAlias = signingProp("keyAlias")
+                keyPassword = signingProp("keyPassword")
+                storeFile = file(signingProp("storeFile"))
+                storePassword = signingProp("storePassword")
             }
         }
     }
