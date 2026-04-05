@@ -10,7 +10,9 @@ import '../domain/models/message.dart';
 import '../domain/repositories/chat_repository.dart';
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
-  if (!RuntimeFlags.useFakeChat) {
+  // Chat thread creation requires numeric PKs from real backend entities.
+  // When listings are in fake mode, keep chat in fake mode to avoid contract mismatch.
+  if (!RuntimeFlags.useFakeChat && !RuntimeFlags.useFakeListings) {
     return ApiChatRepository(ref.watch(apiClientProvider));
   }
   return FakeChatRepository();

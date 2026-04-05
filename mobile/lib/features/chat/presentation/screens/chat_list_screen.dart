@@ -481,6 +481,12 @@ class _DirectThreadResolverState extends ConsumerState<_DirectThreadResolver> {
         lower.contains('cannot start chat with yourself')) {
       return 'This is your own listing. You cannot start a chat with yourself.';
     }
+    if (lower.contains('invalid listing id for chat') ||
+        lower.contains('invalid host user id for chat') ||
+        lower.contains('invalid guest user id for chat') ||
+        lower.contains('expected pk value, received str')) {
+      return 'Chat is unavailable for this listing because host/listing IDs are invalid. Open a real API listing and try again.';
+    }
     return raw;
   }
 }

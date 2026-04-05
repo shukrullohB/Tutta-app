@@ -30,12 +30,28 @@ class ApiChatRepository implements ChatRepository {
     required String guestUserId,
     required String hostUserId,
   }) async {
+    final listingPk = _parseRequiredPk(
+      listingId,
+      fieldName: 'listingId',
+      uiLabel: 'listing',
+    );
+    final guestPk = _parseRequiredPk(
+      guestUserId,
+      fieldName: 'guestUserId',
+      uiLabel: 'guest user',
+    );
+    final hostPk = _parseRequiredPk(
+      hostUserId,
+      fieldName: 'hostUserId',
+      uiLabel: 'host user',
+    );
+
     final result = await _apiClient.post(
       ApiEndpoints.chatThreads,
       data: <String, dynamic>{
-        'listing': int.tryParse(listingId) ?? listingId,
-        'guest_id': int.tryParse(guestUserId) ?? guestUserId,
-        'host_id': int.tryParse(hostUserId) ?? hostUserId,
+        'listing': listingPk,
+        'guest_id': guestPk,
+        'host_id': hostPk,
       },
     );
 
@@ -47,8 +63,13 @@ class ApiChatRepository implements ChatRepository {
 
   @override
   Future<List<Message>> getMessages(String threadId) async {
+    final threadPk = _parseRequiredPk(
+      threadId,
+      fieldName: 'threadId',
+      uiLabel: 'thread',
+    );
     final result = await _apiClient.get(
-      ApiEndpoints.chatThreadMessages(threadId),
+      ApiEndpoints.chatThreadMessages(threadPk.toString()),
     );
 
     return result.when(
@@ -64,8 +85,13 @@ class ApiChatRepository implements ChatRepository {
     required String threadId,
     required String content,
   }) async {
+    final threadPk = _parseRequiredPk(
+      threadId,
+      fieldName: 'threadId',
+      uiLabel: 'thread',
+    );
     final result = await _apiClient.post(
-      ApiEndpoints.chatThreadMessages(threadId),
+      ApiEndpoints.chatThreadMessages(threadPk.toString()),
       data: <String, dynamic>{'content': content},
     );
 
@@ -81,8 +107,21 @@ class ApiChatRepository implements ChatRepository {
     required String messageId,
     required String content,
   }) async {
+    final threadPk = _parseRequiredPk(
+      threadId,
+      fieldName: 'threadId',
+      uiLabel: 'thread',
+    );
+    final messagePk = _parseRequiredPk(
+      messageId,
+      fieldName: 'messageId',
+      uiLabel: 'message',
+    );
     final result = await _apiClient.patch(
-      ApiEndpoints.chatThreadMessageById(threadId, messageId),
+      ApiEndpoints.chatThreadMessageById(
+        threadPk.toString(),
+        messagePk.toString(),
+      ),
       data: <String, dynamic>{'content': content},
     );
 
@@ -94,8 +133,13 @@ class ApiChatRepository implements ChatRepository {
 
   @override
   Future<void> deleteThread(String threadId) async {
+    final threadPk = _parseRequiredPk(
+      threadId,
+      fieldName: 'threadId',
+      uiLabel: 'thread',
+    );
     final result = await _apiClient.delete(
-      ApiEndpoints.chatThreadById(threadId),
+      ApiEndpoints.chatThreadById(threadPk.toString()),
     );
     result.when(
       success: (_) => const <String, dynamic>{},
@@ -108,8 +152,21 @@ class ApiChatRepository implements ChatRepository {
     required String threadId,
     required String messageId,
   }) async {
+    final threadPk = _parseRequiredPk(
+      threadId,
+      fieldName: 'threadId',
+      uiLabel: 'thread',
+    );
+    final messagePk = _parseRequiredPk(
+      messageId,
+      fieldName: 'messageId',
+      uiLabel: 'message',
+    );
     final result = await _apiClient.delete(
-      ApiEndpoints.chatThreadMessageById(threadId, messageId),
+      ApiEndpoints.chatThreadMessageById(
+        threadPk.toString(),
+        messagePk.toString(),
+      ),
     );
     result.when(
       success: (_) => const <String, dynamic>{},
@@ -161,5 +218,21 @@ class ApiChatRepository implements ChatRepository {
       code: failure.code,
       statusCode: failure.statusCode,
     );
+  }
+
+  int _parseRequiredPk(
+    String raw, {
+    required String fieldName,
+    required String uiLabel,
+  }) {
+    final trimmed = raw.trim();
+    final parsed = int.tryParse(trimmed);
+    if (parsed == null || parsed <= 0) {
+      throw AppException(
+        'Invalid $uiLabel id for chat. Please refresh listing data and try again.',
+        code: 'invalid_$fieldName',
+      );
+    }
+    return parsed;
   }
 }
