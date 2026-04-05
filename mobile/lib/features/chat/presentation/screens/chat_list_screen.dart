@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/config/runtime_flags.dart';
 import '../../../auth/application/auth_controller.dart';
 import '../../../profile/presentation/screens/public_profile_screen.dart';
 import '../../application/chat_provider.dart';
@@ -81,12 +82,15 @@ class _ChatThreadsView extends ConsumerWidget {
                   for (var index = 0; index < threads.length; index++) ...[
                     _ConversationCard(
                       thread: threads[index],
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              ChatThreadScreen(thread: threads[index]),
-                        ),
-                      ),
+                      onTap: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                ChatThreadScreen(thread: threads[index]),
+                          ),
+                        );
+                        ref.invalidate(chatThreadsProvider);
+                      },
                     ),
                     if (index != threads.length - 1) const SizedBox(height: 14),
                   ],
@@ -174,8 +178,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId =
+    final authUserId =
         ref.watch(authControllerProvider).valueOrNull?.user?.id ?? '';
+    final currentUserId = RuntimeFlags.useFakeChat
+        ? widget.thread.guestUserId
+        : authUserId;
     final messagesAsync = ref.watch(chatMessagesProvider(widget.thread.id));
 
     return Scaffold(
@@ -321,8 +328,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen> {
   }
 
   String get _counterpartUserId {
-    final currentUserId =
+    final authUserId =
         ref.read(authControllerProvider).valueOrNull?.user?.id ?? '';
+    final currentUserId = RuntimeFlags.useFakeChat
+        ? widget.thread.guestUserId
+        : authUserId;
     if (currentUserId == widget.thread.hostUserId) {
       return widget.thread.guestUserId;
     }
@@ -477,6 +487,9 @@ class _DirectThreadResolverState extends ConsumerState<_DirectThreadResolver> {
       return 'Please try again.';
     }
     final lower = raw.toLowerCase();
+    if (lower.contains('bad state: no element')) {
+      return 'This chat is no longer available. Please open the listing and start a new conversation.';
+    }
     if (lower.contains('guest_id and host_id must be different users') ||
         lower.contains('cannot start chat with yourself')) {
       return 'This is your own listing. You cannot start a chat with yourself.';

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/config/runtime_flags.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/api_response_parser.dart';
@@ -13,6 +14,19 @@ import '../../../listings/domain/models/listing.dart';
 
 final _publicProfileProvider =
     FutureProvider.family<_PublicProfileData, String>((ref, userId) async {
+      if (RuntimeFlags.useFakeChat || int.tryParse(userId) == null) {
+        return _PublicProfileData(
+          id: userId,
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: null,
+          role: 'host',
+          createdAt: DateTime.now(),
+          activeListingsCount: 0,
+        );
+      }
+
       final apiClient = ref.watch(apiClientProvider);
       final profileResult = await apiClient.get(
         ApiEndpoints.userPublicProfile(userId),

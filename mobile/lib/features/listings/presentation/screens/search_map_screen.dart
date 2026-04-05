@@ -7,12 +7,27 @@ import '../../../../core/utils/google_maps_launcher.dart';
 import '../../application/search_controller.dart';
 import '../../domain/models/listing.dart';
 
-class SearchMapScreen extends ConsumerWidget {
+class SearchMapScreen extends ConsumerStatefulWidget {
   const SearchMapScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(searchControllerProvider).items;
+  ConsumerState<SearchMapScreen> createState() => _SearchMapScreenState();
+}
+
+class _SearchMapScreenState extends ConsumerState<SearchMapScreen> {
+  bool _requestedInitialSearch = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final searchState = ref.watch(searchControllerProvider);
+    final items = searchState.items;
+
+    if (!_requestedInitialSearch && items.isEmpty && !searchState.loading) {
+      _requestedInitialSearch = true;
+      Future<void>.microtask(
+        () => ref.read(searchControllerProvider.notifier).search(),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -23,7 +38,9 @@ class SearchMapScreen extends ConsumerWidget {
         ),
         title: const Text('Google Maps'),
       ),
-      body: items.isEmpty
+      body: searchState.loading
+          ? const Center(child: CircularProgressIndicator())
+          : items.isEmpty
           ? const Center(
               child: Padding(
                 padding: EdgeInsets.all(16),

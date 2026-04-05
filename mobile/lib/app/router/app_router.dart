@@ -44,15 +44,15 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(this._ref) {
     _authSub = _ref.listen<AsyncValue<AuthState>>(
       authControllerProvider,
-      (_, __) => notifyListeners(),
+      (_, _) => notifyListeners(),
     );
     _tokenSub = _ref.listen<String?>(
       authTokenProvider,
-      (_, __) => notifyListeners(),
+      (_, _) => notifyListeners(),
     );
     _sessionSub = _ref.listen<AppSessionState>(
       appSessionControllerProvider,
-      (_, __) => notifyListeners(),
+      (_, _) => notifyListeners(),
     );
   }
 

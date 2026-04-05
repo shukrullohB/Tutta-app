@@ -93,13 +93,12 @@ class FakeChatRepository implements ChatRepository {
   @override
   Future<List<ChatThread>> getThreads() async {
     return _threads
-        .map(
-          (thread) {
-            final messages = _messagesByThread[thread.id];
-            final lastBody = (messages != null && messages.isNotEmpty)
-                ? messages.last.body
-                : null;
-            return ChatThread(
+        .map((thread) {
+          final messages = _messagesByThread[thread.id];
+          final lastBody = (messages != null && messages.isNotEmpty)
+              ? messages.last.body
+              : null;
+          return ChatThread(
             id: thread.id,
             listingId: thread.listingId,
             guestUserId: thread.guestUserId,
@@ -112,8 +111,7 @@ class FakeChatRepository implements ChatRepository {
             listingTitle: thread.listingTitle,
             listingLocation: thread.listingLocation,
           );
-          },
-        )
+        })
         .toList(growable: false);
   }
 
@@ -155,6 +153,23 @@ class FakeChatRepository implements ChatRepository {
 
   @override
   Future<List<Message>> getMessages(String threadId) async {
+    final index = _threads.indexWhere((thread) => thread.id == threadId);
+    if (index != -1 && _threads[index].unreadCount > 0) {
+      final thread = _threads[index];
+      _threads[index] = ChatThread(
+        id: thread.id,
+        listingId: thread.listingId,
+        guestUserId: thread.guestUserId,
+        hostUserId: thread.hostUserId,
+        createdAt: thread.createdAt,
+        lastMessage: thread.lastMessage,
+        unreadCount: 0,
+        counterpartName: thread.counterpartName,
+        counterpartRole: thread.counterpartRole,
+        listingTitle: thread.listingTitle,
+        listingLocation: thread.listingLocation,
+      );
+    }
     return List<Message>.from(_messagesByThread[threadId] ?? const <Message>[]);
   }
 
@@ -164,10 +179,18 @@ class FakeChatRepository implements ChatRepository {
     required String content,
   }) async {
     final list = _messagesByThread.putIfAbsent(threadId, () => <Message>[]);
+    ChatThread? thread;
+    for (final item in _threads) {
+      if (item.id == threadId) {
+        thread = item;
+        break;
+      }
+    }
+    final senderId = thread?.guestUserId ?? 'user_demo_1';
     final message = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       conversationId: threadId,
-      senderUserId: 'user_demo_1',
+      senderUserId: senderId,
       body: content,
       sentAt: DateTime.now(),
       isRead: false,
