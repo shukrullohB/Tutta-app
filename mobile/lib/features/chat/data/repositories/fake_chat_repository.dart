@@ -94,19 +94,25 @@ class FakeChatRepository implements ChatRepository {
   Future<List<ChatThread>> getThreads() async {
     return _threads
         .map(
-          (thread) => ChatThread(
+          (thread) {
+            final messages = _messagesByThread[thread.id];
+            final lastBody = (messages != null && messages.isNotEmpty)
+                ? messages.last.body
+                : null;
+            return ChatThread(
             id: thread.id,
             listingId: thread.listingId,
             guestUserId: thread.guestUserId,
             hostUserId: thread.hostUserId,
             createdAt: thread.createdAt,
-            lastMessage: _messagesByThread[thread.id]?.last.body,
+            lastMessage: lastBody,
             unreadCount: thread.unreadCount,
             counterpartName: thread.counterpartName,
             counterpartRole: thread.counterpartRole,
             listingTitle: thread.listingTitle,
             listingLocation: thread.listingLocation,
-          ),
+          );
+          },
         )
         .toList(growable: false);
   }

@@ -481,6 +481,12 @@ class _DirectThreadResolverState extends ConsumerState<_DirectThreadResolver> {
         lower.contains('cannot start chat with yourself')) {
       return 'This is your own listing. You cannot start a chat with yourself.';
     }
+    if (lower.contains('expected pk value') ||
+        lower.contains('received str') ||
+        lower.contains('invalid pk') ||
+        lower.contains('incorrect type')) {
+      return 'This listing is in demo mode. Open Chats from bottom navigation to continue with demo conversations.';
+    }
     return raw;
   }
 }

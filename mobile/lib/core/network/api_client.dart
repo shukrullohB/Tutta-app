@@ -128,7 +128,6 @@ class ApiClient {
   Failure _toFailure(DioException error) {
     final payload = error.response?.data;
     final statusCode = error.response?.statusCode;
-    final requestUrl = error.requestOptions.uri.toString();
     String message = 'Network error. Please try again.';
 
     if (payload is Map) {
@@ -147,24 +146,17 @@ class ApiClient {
           (key, value) => MapEntry(key.toString(), value),
         );
         for (final value in errors.values) {
-          if (value is List && value.isNotEmpty && value.first is String) {
-            message = value.first as String;
-            break;
-          }
-          if (value is String && value.isNotEmpty) {
-            message = value;
+          final extracted = _extractMessageFromAny(value);
+          if (extracted != null) {
+            message = extracted;
             break;
           }
         }
       } else {
         for (final entry in mapPayload.entries) {
-          final value = entry.value;
-          if (value is List && value.isNotEmpty && value.first is String) {
-            message = value.first as String;
-            break;
-          }
-          if (value is String && value.isNotEmpty) {
-            message = value;
+          final extracted = _extractMessageFromAny(entry.value);
+          if (extracted != null) {
+            message = extracted;
             break;
           }
         }
@@ -207,10 +199,39 @@ class ApiClient {
     }
 
     return Failure(
-      message: '$message (request: $requestUrl)',
+      message: message,
       statusCode: statusCode,
       code: error.type.name,
     );
+  }
+
+  String? _extractMessageFromAny(Object? value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is String && value.isNotEmpty) {
+      return value;
+    }
+    if (value is List && value.isNotEmpty) {
+      final first = value.first;
+      if (first is String && first.isNotEmpty) {
+        return first;
+      }
+      final converted = first?.toString().trim();
+      if (converted != null && converted.isNotEmpty) {
+        return converted;
+      }
+      return null;
+    }
+    if (value is Map) {
+      final maybeMessage = value['message'] ?? value['detail'] ?? value['string'];
+      return _extractMessageFromAny(maybeMessage);
+    }
+    final converted = value.toString().trim();
+    if (converted.isNotEmpty) {
+      return converted;
+    }
+    return null;
   }
 
   Options _optionsForBody({

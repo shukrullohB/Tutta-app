@@ -6,9 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/app.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
-import '../../../../core/errors/app_exception.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../application/auth_controller.dart';
+import '../utils/auth_error_mapper.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -80,11 +80,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     final state = ref.read(authControllerProvider);
-    if ((state.valueOrNull?.isAuthenticated ?? false) == true) {
-      context.go(RouteNames.roleSelector);
-      return;
-    }
-
     state.whenOrNull(error: (error, _) => _setInlineError(_mapError(error)));
   }
 
@@ -128,11 +123,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     final state = ref.read(authControllerProvider);
-    if ((state.valueOrNull?.isAuthenticated ?? false) == true) {
-      context.go(RouteNames.roleSelector);
-      return;
-    }
-
     state.whenOrNull(error: (error, _) => _setInlineError(_mapError(error)));
   }
 
@@ -147,7 +137,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
 
     if (success) {
-      context.go(RouteNames.roleSelector);
       return;
     }
 
@@ -171,10 +160,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   String _mapError(Object error) {
-    if (error is AppException) {
-      return error.message;
-    }
-    return 'Something went wrong. Please try again.';
+    return mapAuthError(error);
   }
 
   @override

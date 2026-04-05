@@ -17,7 +17,7 @@ import 'auth_state.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   if (!RuntimeFlags.useFakeAuth) {
-    return ApiAuthRepository(ref.watch(apiClientProvider));
+    return ApiAuthRepository(ref.read(apiClientProvider));
   }
 
   return FakeAuthRepository();
@@ -28,7 +28,7 @@ final otpAuthRepositoryProvider = Provider<OtpAuthRepository>((ref) {
     return FakeOtpAuthRepository();
   }
 
-  return ApiOtpAuthRepository(ref.watch(apiClientProvider));
+  return ApiOtpAuthRepository(ref.read(apiClientProvider));
 });
 
 class AuthController extends StateNotifier<AsyncValue<AuthState>> {
@@ -41,10 +41,24 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
   String? _lastOtpPhone;
   int _authEpoch = 0;
 
+  void _setStateSafely(AsyncValue<AuthState> value) {
+    try {
+      state = value;
+    } catch (error) {
+      // Avoid dropping successful auth on rare listener re-entrancy issues.
+      Future<void>.microtask(() {
+        try {
+          state = value;
+        } catch (_) {}
+      });
+    }
+  }
+
   Future<bool> signInWithGoogle() async {
     _authEpoch++;
     print('[AUTH_TRACE] signInWithGoogle:start epoch=$_authEpoch');
-    state = const AsyncValue.loading();
+    _setStateSafely(const AsyncValue.loading());
+    var backendAuthSucceeded = false;
 
     try {
       String idToken;
@@ -118,21 +132,57 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
           .read(secureStorageServiceProvider)
           .saveTokens(accessToken: access, refreshToken: refreshToken);
       _read.read(authTokenProvider.notifier).state = access;
+      backendAuthSucceeded = true;
       print('[AUTH_TRACE] signInWithGoogle:tokens saved');
 
       _lastOtpPhone = null;
-      state = AsyncValue.data(
-        AuthState(user: user, phoneForOtp: null, hydrated: true),
-      );
+      // Defer state update to avoid listener re-entrancy during provider iteration.
+      Future<void>.microtask(() {
+        _setStateSafely(
+          AsyncValue.data(
+            AuthState(user: user, phoneForOtp: null, hydrated: true),
+          ),
+        );
+      });
       print('[AUTH_TRACE] signInWithGoogle:done success=true');
       return true;
     } on AppException catch (error, stackTrace) {
+      if (backendAuthSucceeded) {
+        // Backend auth already succeeded; do not turn it into a hard login failure.
+        print(
+          '[AUTH_TRACE] signInWithGoogle:non-fatal AppException after token save ${error.message}',
+        );
+        Future<void>.microtask(() {
+          _setStateSafely(
+            AsyncValue.data(
+              AuthState(user: null, phoneForOtp: null, hydrated: true),
+            ),
+          );
+        });
+        return true;
+      }
       print('[AUTH_TRACE] signInWithGoogle:AppException ${error.message}');
-      state = AsyncValue.error(error, stackTrace);
+      _setStateSafely(AsyncValue.error(error, stackTrace));
       return false;
     } catch (error, stackTrace) {
+      if (backendAuthSucceeded) {
+        // Defensive fallback for Riverpod listener re-entrancy edge cases.
+        print(
+          '[AUTH_TRACE] signInWithGoogle:non-fatal Exception after token save $error',
+        );
+        Future<void>.microtask(() {
+          _setStateSafely(
+            AsyncValue.data(
+              AuthState(user: null, phoneForOtp: null, hydrated: true),
+            ),
+          );
+        });
+        return true;
+      }
       print('[AUTH_TRACE] signInWithGoogle:Exception $error');
-      state = AsyncValue.error(AppException(error.toString()), stackTrace);
+      _setStateSafely(
+        AsyncValue.error(AppException(error.toString()), stackTrace),
+      );
       return false;
     }
   }
@@ -307,6 +357,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
 
   Future<void> restoreSession() async {
     final startedEpoch = _authEpoch;
+    print('[AUTH_TRACE] restoreSession:start epoch=$startedEpoch');
     try {
       final storedAccess = await _read
           .read(secureStorageServiceProvider)
@@ -316,10 +367,14 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
           .readRefreshToken();
 
       if (startedEpoch != _authEpoch) {
+        print(
+          '[AUTH_TRACE] restoreSession:skip due epoch changed started=$startedEpoch current=$_authEpoch',
+        );
         return;
       }
 
       if (storedAccess == null || storedAccess.isEmpty) {
+        print('[AUTH_TRACE] restoreSession:no access token in storage');
         if (startedEpoch != _authEpoch) {
           return;
         }
@@ -330,6 +385,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
       }
 
       _read.read(authTokenProvider.notifier).state = storedAccess;
+      print('[AUTH_TRACE] restoreSession:access token restored to provider');
 
       try {
         final me = await _authRepository.me();
@@ -339,9 +395,11 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
         state = AsyncValue.data(
           AuthState(user: me, phoneForOtp: null, hydrated: true),
         );
+        print('[AUTH_TRACE] restoreSession:me success userId=${me.id}');
         return;
       } on AppException {
         // Try refresh fallback below.
+        print('[AUTH_TRACE] restoreSession:me failed, trying refresh');
       }
 
       if (storedRefresh != null && storedRefresh.isNotEmpty) {
@@ -366,16 +424,19 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
             state = AsyncValue.data(
               AuthState(user: me, phoneForOtp: null, hydrated: true),
             );
+            print('[AUTH_TRACE] restoreSession:refresh+me success userId=${me.id}');
             return;
           }
         } catch (_) {
           // Continue to local sign-out fallback below.
+          print('[AUTH_TRACE] restoreSession:refresh fallback failed');
         }
       }
 
       if (startedEpoch != _authEpoch) {
         return;
       }
+      print('[AUTH_TRACE] restoreSession:clearing tokens (restore failed)');
       await _read.read(secureStorageServiceProvider).clearTokens();
       _read.read(authTokenProvider.notifier).state = null;
       _lastOtpPhone = null;
@@ -383,6 +444,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
         const AuthState.initial().copyWith(hydrated: true),
       );
     } catch (_) {
+      print('[AUTH_TRACE] restoreSession:exception, clearing tokens');
       await _read.read(secureStorageServiceProvider).clearTokens();
       _read.read(authTokenProvider.notifier).state = null;
       _lastOtpPhone = null;
@@ -517,8 +579,8 @@ class AuthController extends StateNotifier<AsyncValue<AuthState>> {
 final authControllerProvider =
     StateNotifierProvider<AuthController, AsyncValue<AuthState>>((ref) {
       final controller = AuthController(
-        ref.watch(authRepositoryProvider),
-        ref.watch(otpAuthRepositoryProvider),
+        ref.read(authRepositoryProvider),
+        ref.read(otpAuthRepositoryProvider),
         ref,
       );
       Future<void>.microtask(controller.restoreSession);

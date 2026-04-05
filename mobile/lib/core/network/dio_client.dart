@@ -9,8 +9,6 @@ const _defaultApiBaseUrl = String.fromEnvironment(
 );
 
 final dioProvider = Provider<Dio>((ref) {
-  final authToken = ref.watch(authTokenProvider);
-
   final client = Dio(
     BaseOptions(
       baseUrl: _defaultApiBaseUrl,
@@ -24,6 +22,7 @@ final dioProvider = Provider<Dio>((ref) {
   client.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
+        final authToken = ref.read(authTokenProvider);
         if (options.path.contains('/auth/google')) {
           print('[AUTH_TRACE] HTTP -> ${options.method} ${options.uri}');
         }

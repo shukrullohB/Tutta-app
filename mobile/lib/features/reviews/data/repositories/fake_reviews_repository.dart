@@ -106,9 +106,43 @@ class FakeReviewsRepository implements ReviewsRepository {
   Future<List<Review>> getByListing(String listingId) async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
 
-    return _reviews
+    final direct = _reviews
         .where((review) => review.listingId == listingId)
         .toList(growable: false);
+    if (direct.isNotEmpty) {
+      return direct;
+    }
+
+    // Example listings use ids like `example_tashkent_mirobod_2`.
+    // Return a realistic fallback instead of empty/error blocks.
+    if (listingId.startsWith('example_')) {
+      return <Review>[
+        Review(
+          id: 'example_${listingId}_r1',
+          bookingId: 'example_${listingId}_b1',
+          listingId: listingId,
+          reviewerUserId: 'guest_demo_21',
+          reviewerName: 'Akmal R.',
+          hostUserId: 'host_demo',
+          rating: 5,
+          comment: 'Very clean, accurate photos, and smooth check-in.',
+          createdAt: DateTime(2026, 3, 18),
+        ),
+        Review(
+          id: 'example_${listingId}_r2',
+          bookingId: 'example_${listingId}_b2',
+          listingId: listingId,
+          reviewerUserId: 'guest_demo_22',
+          reviewerName: 'Nodira K.',
+          hostUserId: 'host_demo',
+          rating: 4,
+          comment: 'Good location and responsive host. Would stay again.',
+          createdAt: DateTime(2026, 3, 26),
+        ),
+      ];
+    }
+
+    return direct;
   }
 
   @override

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
 import '../../features/auth/application/auth_controller.dart';
+import '../../features/auth/application/auth_state.dart';
 import '../../features/auth/presentation/screens/auth_screen.dart';
 import '../../features/auth/presentation/screens/onboarding_screen.dart';
 import '../../features/auth/presentation/screens/verify_otp_screen.dart';
@@ -33,18 +34,57 @@ import '../../features/wishlist/presentation/screens/favorites_screen.dart';
 import '../../core/network/auth_token_provider.dart';
 import 'route_names.dart';
 
-final appRouterProvider = Provider<GoRouter>((ref) {
-  final authAsync = ref.watch(authControllerProvider);
-  final authState = authAsync.valueOrNull;
-  final authToken = ref.watch(authTokenProvider);
-  final session = ref.watch(appSessionControllerProvider);
+final _routerRefreshProvider = Provider<_RouterRefreshNotifier>((ref) {
+  final notifier = _RouterRefreshNotifier(ref);
+  ref.onDispose(notifier.dispose);
+  return notifier;
+});
 
-  return GoRouter(
+class _RouterRefreshNotifier extends ChangeNotifier {
+  _RouterRefreshNotifier(this._ref) {
+    _authSub = _ref.listen<AsyncValue<AuthState>>(
+      authControllerProvider,
+      (_, __) => notifyListeners(),
+    );
+    _tokenSub = _ref.listen<String?>(
+      authTokenProvider,
+      (_, __) => notifyListeners(),
+    );
+    _sessionSub = _ref.listen<AppSessionState>(
+      appSessionControllerProvider,
+      (_, __) => notifyListeners(),
+    );
+  }
+
+  final Ref _ref;
+  late final ProviderSubscription<AsyncValue<AuthState>> _authSub;
+  late final ProviderSubscription<String?> _tokenSub;
+  late final ProviderSubscription<AppSessionState> _sessionSub;
+
+  @override
+  void dispose() {
+    _authSub.close();
+    _tokenSub.close();
+    _sessionSub.close();
+    super.dispose();
+  }
+}
+
+final appRouterProvider = Provider<GoRouter>((ref) {
+  final refreshListenable = ref.watch(_routerRefreshProvider);
+
+  final router = GoRouter(
     initialLocation: RouteNames.splash,
+    refreshListenable: refreshListenable,
     redirect: (context, state) {
+      final authAsync = ref.read(authControllerProvider);
+      final authState = authAsync.valueOrNull;
+      final authToken = ref.read(authTokenProvider);
+      final session = ref.read(appSessionControllerProvider);
+
       final hasToken = authToken != null && authToken.isNotEmpty;
       final isLoggedIn = (authState?.isAuthenticated ?? false) || hasToken;
-      final authHydrated = authState?.hydrated ?? false;
+      final authHydrated = (authState?.hydrated ?? false) || hasToken;
       final location = state.matchedLocation;
       final bootstrapping = !authHydrated || !session.hydrated;
       final onboardingCompleted = session.onboardingCompleted;
@@ -234,6 +274,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  ref.onDispose(router.dispose);
+  return router;
 });
 
 class _SplashRedirectScreen extends StatelessWidget {

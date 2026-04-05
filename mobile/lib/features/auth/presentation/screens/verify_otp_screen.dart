@@ -7,8 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
-import '../../../../core/errors/app_exception.dart';
 import '../../application/auth_controller.dart';
+import '../utils/auth_error_mapper.dart';
 import '../widgets/auth_ui_kit.dart';
 
 class VerifyOtpScreen extends ConsumerStatefulWidget {
@@ -138,10 +138,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
   }
 
   String _mapError(Object error) {
-    if (error is AppException) {
-      return error.message;
-    }
-    return 'Something went wrong. Please try again.';
+    return mapAuthError(error);
   }
 
   @override

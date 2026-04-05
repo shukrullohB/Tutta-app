@@ -18,12 +18,12 @@ class RuntimeFlags {
 
   static const bool useFakeReviews = bool.fromEnvironment(
     'USE_FAKE_REVIEWS',
-    defaultValue: false,
+    defaultValue: true,
   );
 
   static const bool useFakeChat = bool.fromEnvironment(
     'USE_FAKE_CHAT',
-    defaultValue: false,
+    defaultValue: true,
   );
 
   static const bool useFakeListings = bool.fromEnvironment(
