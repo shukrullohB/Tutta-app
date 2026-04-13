@@ -45,9 +45,9 @@ Tutta is designed for:
 
 ## Team
 
-- **Baxtiyorov Shukrullo** — Flutter Developer
+- **Baxtiyorov Shukrullo** — Flutter Developer / Planning
 - **Sanjar Rakhimov** — Backend Developer
-- **Akmaljon Po'latjonov** — Product Manager / QA / Documentation / Planning / Support
+- **Akmaljon Po'latjonov** — Product Manager / QA / Documentation / Support
 
 ## Tech Stack
 
