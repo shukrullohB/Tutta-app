@@ -87,3 +87,4 @@ tutta-app/
 ├── docs/          # Product docs, API plans, database schema, roadmap
 ├── .github/       # GitHub templates and workflows
 └── README.md
+Tutta
